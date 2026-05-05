@@ -37,14 +37,24 @@ public struct SVGOptimizer {
         var warnings: [String] = []
         let viewBox = ViewBox(root.attributeValue("viewBox"))
 
-        convertInlineStyles(in: root, warnings: &warnings)
+        if options.convertInlineStyles {
+            convertInlineStyles(in: root, warnings: &warnings)
+        }
         sanitizeDangerousContent(in: root, warnings: &warnings)
-        expandUseReferences(in: root, warnings: &warnings)
-        removeSafeClipPathReferences(in: root, viewBox: viewBox)
+        if options.expandUseReferences {
+            expandUseReferences(in: root, warnings: &warnings)
+        }
+        if options.removeSafeClipPaths {
+            removeSafeClipPathReferences(in: root, viewBox: viewBox)
+        }
         removeWhitespaceNodes(in: root)
-        unwrapEmptyGroups(in: root)
+        if options.unwrapEmptyGroups {
+            unwrapEmptyGroups(in: root)
+        }
 
-        warnings.append(contentsOf: remainingInternalReferenceWarnings(in: root))
+        if options.requireNoInternalReferences {
+            warnings.append(contentsOf: remainingInternalReferenceWarnings(in: root))
+        }
         if !warnings.isEmpty {
             let full = serialize(root, pretty: true)
             return SVGOptimizationResult(
@@ -57,10 +67,17 @@ public struct SVGOptimizer {
 
         applyPaintRules(to: root, options: options, viewBox: viewBox, warnings: &warnings)
         applySizeRules(to: root, options: options)
-        removeUnusedDefinitionContent(in: root)
-        removeAllIDs(in: root)
+        let internalReferencesRemain = hasInternalReferences(in: root)
+        if options.removeUnusedDefs, !internalReferencesRemain {
+            removeUnusedDefinitionContent(in: root)
+        }
+        if options.removeIDs, !internalReferencesRemain {
+            removeAllIDs(in: root)
+        }
         removeWhitespaceNodes(in: root)
-        unwrapEmptyGroups(in: root)
+        if options.unwrapEmptyGroups {
+            unwrapEmptyGroups(in: root)
+        }
         root.ensureAttribute("aria-hidden", value: "true")
         root.ensureAttribute("focusable", value: "false")
 
@@ -330,9 +347,17 @@ public struct SVGOptimizer {
 
         let uniqueFills = Set(fillValues)
         if uniqueFills.count == 1 {
-            root.setAttribute("fill", value: "currentColor")
-            for element in nonBackgroundElements {
-                element.removeAttribute(forName: "fill")
+            if options.movePaintToRoot {
+                root.setAttribute("fill", value: resolvedColorValue(original: uniqueFills.first, options: options))
+                for element in nonBackgroundElements {
+                    element.removeAttribute(forName: "fill")
+                }
+            } else {
+                for element in nonBackgroundElements {
+                    if element.attributeValue("fill") != nil {
+                        element.setAttribute("fill", value: resolvedColorValue(original: element.attributeValue("fill"), options: options))
+                    }
+                }
             }
         } else if uniqueFills.count > 1 {
             warnings.append("Многоцветная fill-иконка сохранена без агрессивной замены цветов.")
@@ -344,8 +369,21 @@ public struct SVGOptimizer {
         paintElements: [XMLElement],
         options: SVGOptimizationOptions
     ) {
+        if !options.movePaintToRoot {
+            for element in paintElements {
+                if element.attributeValue("stroke") != nil {
+                    element.setAttribute("stroke", value: resolvedColorValue(original: element.attributeValue("stroke"), options: options))
+                }
+                if element.attributeValue("stroke-width") != nil {
+                    element.setAttribute("stroke-width", value: options.strokeWidth)
+                }
+            }
+            return
+        }
+
+        let originalStroke = commonAttribute("stroke", in: paintElements) ?? root.attributeValue("stroke")
         root.setAttribute("fill", value: "none")
-        root.setAttribute("stroke", value: "currentColor")
+        root.setAttribute("stroke", value: resolvedColorValue(original: originalStroke, options: options))
         root.setAttribute("stroke-width", value: options.strokeWidth)
 
         if let commonLineCap = commonAttribute("stroke-linecap", in: paintElements) {
@@ -380,6 +418,21 @@ public struct SVGOptimizer {
         return first
     }
 
+    private func resolvedColorValue(original: String?, options: SVGOptimizationOptions) -> String {
+        switch options.colorMode {
+        case .currentColor:
+            return "currentColor"
+        case .custom:
+            return options.customColor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "currentColor"
+                : options.customColor.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .preserve:
+            return original?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? original!.trimmingCharacters(in: .whitespacesAndNewlines)
+                : "currentColor"
+        }
+    }
+
     private func applySizeRules(to root: XMLElement, options: SVGOptimizationOptions) {
         switch options.profile {
         case .bricksCurrentColor:
@@ -398,6 +451,23 @@ public struct SVGOptimizer {
         for element in root.descendants(named: "defs") {
             element.detach()
         }
+    }
+
+    private func hasInternalReferences(in root: XMLElement) -> Bool {
+        for element in root.allElements {
+            for attribute in element.attributeList {
+                guard let value = attribute.stringValue else { continue }
+                if SVGReferenceParser.internalURLID(from: value) != nil {
+                    return true
+                }
+                if let name = attribute.name?.lowercased(),
+                   SVGAttributeNames.linkNames.contains(name),
+                   value.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#") {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private func removeAllIDs(in element: XMLElement) {

@@ -17,6 +17,16 @@ final class AppViewModel: ObservableObject {
     @Published var strokeWidth = "1.5"
     @Published var fixedSize = "24"
     @Published var removeBackground = false
+    @Published var colorMode: SVGColorMode = .currentColor
+    @Published var customColor = "#000000"
+    @Published var movePaintToRoot = true
+    @Published var convertInlineStyles = true
+    @Published var removeSafeClipPaths = true
+    @Published var expandUseReferences = true
+    @Published var removeUnusedDefs = true
+    @Published var removeIDs = true
+    @Published var unwrapEmptyGroups = true
+    @Published var requireNoInternalReferences = true
     @Published var previewColor = Color.black
     @Published var isDropTargeted = false
 
@@ -27,7 +37,17 @@ final class AppViewModel: ObservableObject {
             profile: profile,
             strokeWidth: normalized(strokeWidth, fallback: "1.5"),
             fixedSize: normalized(fixedSize, fallback: "24"),
-            removeBackground: removeBackground
+            removeBackground: removeBackground,
+            colorMode: colorMode,
+            customColor: normalized(customColor, fallback: "#000000"),
+            movePaintToRoot: movePaintToRoot,
+            convertInlineStyles: convertInlineStyles,
+            removeSafeClipPaths: removeSafeClipPaths,
+            expandUseReferences: expandUseReferences,
+            removeUnusedDefs: removeUnusedDefs,
+            removeIDs: removeIDs,
+            unwrapEmptyGroups: unwrapEmptyGroups,
+            requireNoInternalReferences: requireNoInternalReferences
         )
     }
 
@@ -73,6 +93,21 @@ final class AppViewModel: ObservableObject {
         selectedFiles = []
         selectedFileIndex = 0
         statusText = "Загруженные иконки очищены. Можно выбрать новый набор SVG."
+    }
+
+    func resetAdvancedSettings() {
+        colorMode = .currentColor
+        customColor = "#000000"
+        movePaintToRoot = true
+        convertInlineStyles = true
+        removeSafeClipPaths = true
+        expandUseReferences = true
+        removeUnusedDefs = true
+        removeIDs = true
+        unwrapEmptyGroups = true
+        requireNoInternalReferences = true
+        removeBackground = false
+        optimizeCurrentCode()
     }
 
     func optimizeCurrentCode() {

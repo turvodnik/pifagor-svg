@@ -4,10 +4,14 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
+    @State private var isShowingAdvancedSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
-            ToolbarView(viewModel: viewModel)
+            ToolbarView(
+                viewModel: viewModel,
+                isShowingAdvancedSettings: $isShowingAdvancedSettings
+            )
             Divider()
             FileNavigatorView(viewModel: viewModel)
             Divider()
@@ -53,11 +57,48 @@ struct ContentView: View {
         .onChange(of: viewModel.removeBackground) { _, _ in
             viewModel.optimizeCurrentCode()
         }
+        .onChange(of: viewModel.colorMode) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.customColor) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.movePaintToRoot) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.convertInlineStyles) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.removeSafeClipPaths) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.expandUseReferences) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.removeUnusedDefs) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.removeIDs) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.unwrapEmptyGroups) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.requireNoInternalReferences) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .sheet(isPresented: $isShowingAdvancedSettings) {
+            AdvancedSettingsView(
+                viewModel: viewModel,
+                isPresented: $isShowingAdvancedSettings
+            )
+        }
     }
 }
 
 private struct ToolbarView: View {
     @ObservedObject var viewModel: AppViewModel
+    @Binding var isShowingAdvancedSettings: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -73,6 +114,9 @@ private struct ToolbarView: View {
                 }
                 Button("Оптимизировать код") {
                     viewModel.optimizeCurrentCode()
+                }
+                Button("Настройки очистки") {
+                    isShowingAdvancedSettings = true
                 }
                 Button("Применить ко всем и сохранить") {
                     viewModel.batchOptimizeSelected()
@@ -129,6 +173,95 @@ private struct ToolbarView: View {
             }
         }
         .padding(14)
+    }
+}
+
+private struct AdvancedSettingsView: View {
+    @ObservedObject var viewModel: AppViewModel
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Настройки очистки SVG")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Button("По умолчанию") {
+                    viewModel.resetAdvancedSettings()
+                }
+                Button("Готово") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(18)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    SettingsSection(title: "Цвет и перенос атрибутов") {
+                        Picker("Цвет", selection: $viewModel.colorMode) {
+                            Text("currentColor для Bricks/CSS").tag(SVGColorMode.currentColor)
+                            Text("Конкретный цвет").tag(SVGColorMode.custom)
+                            Text("Сохранять исходный").tag(SVGColorMode.preserve)
+                        }
+                        .pickerStyle(.radioGroup)
+
+                        HStack {
+                            Text("Цвет")
+                            TextField("#000000", text: $viewModel.customColor)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 120)
+                                .disabled(viewModel.colorMode != .custom)
+                            Text("Используется только для режима конкретного цвета.")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Toggle("Выносить fill/stroke/stroke-width на корневой <svg>", isOn: $viewModel.movePaintToRoot)
+                        Toggle("Переносить поддерживаемые inline style в SVG-атрибуты", isOn: $viewModel.convertInlineStyles)
+                    }
+
+                    SettingsSection(title: "Очистка структуры") {
+                        Toggle("Удалять безопасные clipPath на весь viewBox", isOn: $viewModel.removeSafeClipPaths)
+                        Toggle("Разворачивать простые <use href=\"#...\"> в реальные элементы", isOn: $viewModel.expandUseReferences)
+                        Toggle("Удалять неиспользуемые <defs>", isOn: $viewModel.removeUnusedDefs)
+                        Toggle("Удалять ненужные id", isOn: $viewModel.removeIDs)
+                        Toggle("Разворачивать пустые группы <g>", isOn: $viewModel.unwrapEmptyGroups)
+                        Toggle("Удалять фоновые rect на весь viewBox", isOn: $viewModel.removeBackground)
+                    }
+
+                    SettingsSection(title: "Внутренние ссылки") {
+                        Toggle("Не оставлять url(#...), href=\"#...\" и другие #id-ссылки", isOn: $viewModel.requireNoInternalReferences)
+                        Text("Если выключить этот пункт, сложные маски, фильтры и градиенты могут остаться внутри SVG. При включенном режиме приложение требует ручное решение вместо того, чтобы сохранить SVG с внутренними ссылками.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    SettingsSection(title: "Безопасность") {
+                        Label("Всегда удаляются <script>, внешние/data/file URL, <foreignObject>, <image>, <feImage>, <a> и onload/onclick/on*.", systemImage: "lock.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(18)
+            }
+        }
+        .frame(width: 640, height: 680)
+    }
+}
+
+private struct SettingsSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+            VStack(alignment: .leading, spacing: 8) {
+                content
+            }
+        }
     }
 }
 

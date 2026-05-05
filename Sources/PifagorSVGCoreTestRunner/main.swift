@@ -233,4 +233,46 @@ try run("output keeps a single xmlns declaration") {
     try expect(namespaceCount == 1, "Expected one SVG xmlns declaration, got \(namespaceCount)")
 }
 
+try run("custom color mode writes a concrete root stroke") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M4 12l4 4 12-12" stroke="#fff" stroke-width="2"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(
+        input,
+        options: SVGOptimizationOptions(colorMode: .custom, customColor: "#008dcc")
+    )
+
+    try expect(result.status == .optimized, "Expected optimized status")
+    try expect(result.fullSVG.contains("stroke=\"#008dcc\""), "Expected custom root stroke")
+    try expect(!result.fullSVG.contains(#"stroke="currentColor""#), "Expected no currentColor in custom mode")
+}
+
+try run("internal reference cleanup can be disabled for special cases") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <defs>
+        <linearGradient id="paint0"><stop stop-color="#fff"/></linearGradient>
+      </defs>
+      <path d="M2 2h20v20H2z" fill="url(#paint0)"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(
+        input,
+        options: SVGOptimizationOptions(
+            removeUnusedDefs: false,
+            removeIDs: false,
+            requireNoInternalReferences: false
+        )
+    )
+
+    try expect(result.status == .optimized, "Expected optimized status when internal refs are allowed")
+    try expect(result.fullSVG.contains("url(#paint0)"), "Expected internal reference to remain")
+    try expect(result.fullSVG.contains("<defs>"), "Expected defs to remain")
+    try expect(result.fullSVG.contains(#"id="paint0""#), "Expected id to remain")
+}
+
 print("All Pifagor SVG core tests passed")
