@@ -9,9 +9,11 @@ struct ContentView: View {
         VStack(spacing: 0) {
             ToolbarView(viewModel: viewModel)
             Divider()
+            FileNavigatorView(viewModel: viewModel)
+            Divider()
             HSplitView {
                 CodeColumn(
-                    title: "Оригинал",
+                    title: "Оригинал: \(viewModel.currentFileName)",
                     code: $viewModel.originalCode,
                     previewSVG: viewModel.originalCode,
                     previewColor: viewModel.previewColor
@@ -39,6 +41,18 @@ struct ContentView: View {
                     .allowsHitTesting(false)
             }
         }
+        .onChange(of: viewModel.profile) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.strokeWidth) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.fixedSize) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
+        .onChange(of: viewModel.removeBackground) { _, _ in
+            viewModel.optimizeCurrentCode()
+        }
     }
 }
 
@@ -60,7 +74,7 @@ private struct ToolbarView: View {
                 Button("Оптимизировать код") {
                     viewModel.optimizeCurrentCode()
                 }
-                Button("Массово сохранить -opt.svg") {
+                Button("Применить ко всем и сохранить") {
                     viewModel.batchOptimizeSelected()
                 }
                 .disabled(viewModel.selectedFiles.isEmpty)
@@ -110,6 +124,70 @@ private struct ToolbarView: View {
             }
         }
         .padding(14)
+    }
+}
+
+private struct FileNavigatorView: View {
+    @ObservedObject var viewModel: AppViewModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("Выбранные SVG")
+                .font(.callout.weight(.semibold))
+
+            Text(viewModel.selectedPositionText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 90, alignment: .leading)
+
+            Button {
+                viewModel.selectPreviousFile()
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            .buttonStyle(.bordered)
+            .disabled(!viewModel.hasMultipleSelectedFiles)
+            .help("Предыдущая SVG-иконка")
+
+            Picker("Файл", selection: selectedFileBinding) {
+                if viewModel.selectedFiles.isEmpty {
+                    Text("Файлы не выбраны").tag(0)
+                } else {
+                    ForEach(Array(viewModel.selectedFiles.enumerated()), id: \.offset) { index, url in
+                        Text(url.lastPathComponent).tag(index)
+                    }
+                }
+            }
+            .labelsHidden()
+            .frame(minWidth: 280, maxWidth: 520)
+            .disabled(viewModel.selectedFiles.isEmpty)
+
+            Button {
+                viewModel.selectNextFile()
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .buttonStyle(.bordered)
+            .disabled(!viewModel.hasMultipleSelectedFiles)
+            .help("Следующая SVG-иконка")
+
+            Spacer()
+
+            if viewModel.hasSelectedFiles {
+                Text("Массовое сохранение применит текущие настройки ко всем выбранным файлам.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private var selectedFileBinding: Binding<Int> {
+        Binding(
+            get: { viewModel.selectedFileIndex },
+            set: { viewModel.selectFile(at: $0) }
+        )
     }
 }
 

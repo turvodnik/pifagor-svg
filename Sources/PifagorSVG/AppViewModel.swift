@@ -12,6 +12,7 @@ final class AppViewModel: ObservableObject {
     @Published var warnings: [String] = []
     @Published var statusText = "Добавьте SVG-файл, папку или вставьте код."
     @Published var selectedFiles: [URL] = []
+    @Published var selectedFileIndex = 0
     @Published var profile: SVGOptimizationProfile = .bricksCurrentColor
     @Published var strokeWidth = "1.5"
     @Published var fixedSize = "24"
@@ -34,15 +35,58 @@ final class AppViewModel: ObservableObject {
         !optimizedCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var selectedFileCount: Int {
+        selectedFiles.count
+    }
+
+    var hasSelectedFiles: Bool {
+        !selectedFiles.isEmpty
+    }
+
+    var hasMultipleSelectedFiles: Bool {
+        selectedFiles.count > 1
+    }
+
+    var currentFileURL: URL? {
+        guard selectedFiles.indices.contains(selectedFileIndex) else {
+            return nil
+        }
+        return selectedFiles[selectedFileIndex]
+    }
+
+    var currentFileName: String {
+        currentFileURL?.lastPathComponent ?? "SVG-код"
+    }
+
+    var selectedPositionText: String {
+        guard hasSelectedFiles else {
+            return "Нет выбранных файлов"
+        }
+        return "\(selectedFileIndex + 1) из \(selectedFiles.count)"
+    }
+
     func optimizeCurrentCode() {
+        guard !originalCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            optimizedCode = ""
+            compactCode = ""
+            warnings = []
+            return
+        }
+
         do {
             let result = try optimizer.optimize(originalCode, options: options)
             optimizedCode = result.fullSVG
             compactCode = result.compactSVG
             warnings = result.warnings
-            statusText = result.status == .optimized
-                ? "Код оптимизирован."
-                : "Требует ручного решения: есть сложные внутренние ссылки."
+            if hasSelectedFiles {
+                statusText = result.status == .optimized
+                    ? "Показан \(currentFileName). Изменения применены в предпросмотре."
+                    : "\(currentFileName): требуется ручное решение."
+            } else {
+                statusText = result.status == .optimized
+                    ? "Код оптимизирован."
+                    : "Требует ручного решения: есть сложные внутренние ссылки."
+            }
         } catch {
             optimizedCode = ""
             compactCode = ""
@@ -78,19 +122,55 @@ final class AppViewModel: ObservableObject {
 
     func load(urls: [URL]) {
         selectedFiles = collectSVGFiles(from: urls)
+        selectedFileIndex = 0
         guard let first = selectedFiles.first else {
             statusText = "SVG-файлы не найдены."
             return
         }
 
+        loadSelectedFile()
+        statusText = selectedFiles.count == 1
+            ? "Загружен \(first.lastPathComponent)."
+            : "Загружено файлов: \(selectedFiles.count). Используйте переключатель для просмотра."
+    }
+
+    func selectFile(at index: Int) {
+        guard selectedFiles.indices.contains(index) else {
+            return
+        }
+        selectedFileIndex = index
+        loadSelectedFile()
+    }
+
+    func selectPreviousFile() {
+        guard hasSelectedFiles else { return }
+        let previous = selectedFileIndex == 0 ? selectedFiles.count - 1 : selectedFileIndex - 1
+        selectFile(at: previous)
+    }
+
+    func selectNextFile() {
+        guard hasSelectedFiles else { return }
+        let next = selectedFileIndex == selectedFiles.count - 1 ? 0 : selectedFileIndex + 1
+        selectFile(at: next)
+    }
+
+    func loadSelectedFile() {
+        guard let file = currentFileURL else {
+            originalCode = ""
+            optimizedCode = ""
+            compactCode = ""
+            warnings = []
+            return
+        }
+
         do {
-            originalCode = try String(contentsOf: first, encoding: .utf8)
-            statusText = selectedFiles.count == 1
-                ? "Загружен \(first.lastPathComponent)."
-                : "Загружено файлов: \(selectedFiles.count). Первый показан в редакторе."
+            originalCode = try String(contentsOf: file, encoding: .utf8)
             optimizeCurrentCode()
         } catch {
-            statusText = "Не удалось прочитать \(first.lastPathComponent)."
+            originalCode = ""
+            optimizedCode = ""
+            compactCode = ""
+            statusText = "Не удалось прочитать \(file.lastPathComponent)."
             warnings = ["\(error)"]
         }
     }
@@ -103,7 +183,7 @@ final class AppViewModel: ObservableObject {
 
         let files = selectedFiles
         let currentOptions = options
-        statusText = "Идет массовая оптимизация: \(files.count) файлов."
+        statusText = "Применяю текущие настройки ко всем выбранным SVG: \(files.count) файлов."
 
         Task.detached(priority: .userInitiated) {
             let processor = SVGFileProcessor()
@@ -122,7 +202,7 @@ final class AppViewModel: ObservableObject {
             await MainActor.run {
                 self.warnings = skipped
                 self.statusText = skipped.isEmpty
-                    ? "Готово: создано \(created) файлов -opt.svg."
+                    ? "Готово: создано \(created) файлов -opt.svg по текущим настройкам."
                     : "Создано \(created), пропущено \(skipped.count)."
             }
         }
@@ -161,19 +241,32 @@ final class AppViewModel: ObservableObject {
     }
 
     func handleDrop(providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+        let fileProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+
+        if !fileProviders.isEmpty {
+            let group = DispatchGroup()
+            let accumulator = DroppedURLAccumulator()
+
+            for provider in fileProviders {
+                group.enter()
                 provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                    let url = fileURL(from: item)
-                    Task { @MainActor in
-                        if let url {
-                            self.load(urls: [url])
-                        }
+                    if let url = fileURL(from: item) {
+                        accumulator.append(url)
                     }
+                    group.leave()
                 }
-                return true
             }
 
+            group.notify(queue: .main) {
+                self.load(urls: accumulator.snapshot())
+            }
+
+            return true
+        }
+
+        for provider in providers {
             if provider.canLoadObject(ofClass: NSString.self) {
                 provider.loadObject(ofClass: NSString.self) { object, _ in
                     let text = (object as? NSString).map(String.init)
@@ -181,6 +274,7 @@ final class AppViewModel: ObservableObject {
                         if let text, text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<svg") {
                             self.originalCode = text
                             self.selectedFiles = []
+                            self.selectedFileIndex = 0
                             self.optimizeCurrentCode()
                         }
                     }
@@ -193,10 +287,10 @@ final class AppViewModel: ObservableObject {
     }
 
     private func defaultSaveName() -> String {
-        guard let first = selectedFiles.first else {
+        guard let currentFileURL else {
             return "icon-opt.svg"
         }
-        return SVGFileNamer.optimizedURL(for: first).lastPathComponent
+        return SVGFileNamer.optimizedURL(for: currentFileURL).lastPathComponent
     }
 
     private func copyToPasteboard(_ value: String) {
@@ -253,6 +347,24 @@ private func fileURL(from item: NSSecureCoding?) -> URL? {
     }
 
     return nil
+}
+
+private final class DroppedURLAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var urls: [URL] = []
+
+    func append(_ url: URL) {
+        lock.lock()
+        urls.append(url)
+        lock.unlock()
+    }
+
+    func snapshot() -> [URL] {
+        lock.lock()
+        let current = urls
+        lock.unlock()
+        return current
+    }
 }
 
 private extension URL {

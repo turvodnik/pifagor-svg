@@ -30,18 +30,25 @@ struct SVGPreview: NSViewRepresentable {
               margin: 0;
               width: 100%;
               height: 100%;
-              background:
-                linear-gradient(45deg, #f3f3f3 25%, transparent 25%),
-                linear-gradient(-45deg, #f3f3f3 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #f3f3f3 75%),
-                linear-gradient(-45deg, transparent 75%, #f3f3f3 75%);
-              background-size: 24px 24px;
-              background-position: 0 0, 0 12px, 12px -12px, -12px 0;
               color: \(previewColor.hexForHTML);
               display: flex;
               align-items: center;
               justify-content: center;
               overflow: hidden;
+              background-color: #eef1f3;
+            }
+            body::before {
+              content: "";
+              position: fixed;
+              inset: 0;
+              background:
+                linear-gradient(45deg, #dfe4e7 25%, transparent 25%),
+                linear-gradient(-45deg, #dfe4e7 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #dfe4e7 75%),
+                linear-gradient(-45deg, transparent 75%, #dfe4e7 75%);
+              background-size: 28px 28px;
+              background-position: 0 0, 0 14px, 14px -14px, -14px 0;
+              opacity: 0.42;
             }
             .stage {
               width: min(78vw, 180px);
@@ -49,6 +56,8 @@ struct SVGPreview: NSViewRepresentable {
               display: flex;
               align-items: center;
               justify-content: center;
+              position: relative;
+              z-index: 1;
             }
             svg {
               max-width: 100%;
