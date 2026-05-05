@@ -25,7 +25,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "PifagorSVG",
-            dependencies: ["PifagorSVGCore"]
+            dependencies: ["PifagorSVGCore"],
+            resources: [.copy("Resources")]
         )
     ]
 )
