@@ -189,6 +189,45 @@ try run("output file names use dash opt suffix without overwriting") {
     try expect(generated.lastPathComponent == "badge-opt-2.svg", "Expected badge-opt-2.svg")
 }
 
+try run("output file names can use profile prefix suffix folder and overwrite") {
+    let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let outputDirectory = tempDirectory.appendingPathComponent("out", isDirectory: true)
+    try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+    let original = tempDirectory.appendingPathComponent("badge.svg")
+    let existing = outputDirectory.appendingPathComponent("p-badge-done.svg")
+    try "<svg/>".write(to: original, atomically: true, encoding: .utf8)
+    try "<svg/>".write(to: existing, atomically: true, encoding: .utf8)
+
+    let nonOverwrite = SVGFileNamer.optimizedURL(
+        for: original,
+        options: SVGOptimizationOptions(
+            outputPrefix: "p-",
+            outputSuffix: "-done",
+            outputDirectoryMode: .custom,
+            customOutputDirectory: outputDirectory.path
+        ),
+        fileManager: .default
+    )
+    let overwrite = SVGFileNamer.optimizedURL(
+        for: original,
+        options: SVGOptimizationOptions(
+            outputPrefix: "p-",
+            outputSuffix: "-done",
+            overwriteExistingOutput: true,
+            outputDirectoryMode: .custom,
+            customOutputDirectory: outputDirectory.path
+        ),
+        fileManager: .default
+    )
+
+    try expect(nonOverwrite.lastPathComponent == "p-badge-done-2.svg", "Expected conflict suffix in custom folder")
+    try expect(nonOverwrite.deletingLastPathComponent() == outputDirectory, "Expected custom output folder")
+    try expect(overwrite.lastPathComponent == "p-badge-done.svg", "Expected overwrite candidate without -2")
+}
+
 try run("cli style parser can receive paths after dash dash") {
     let tempDirectory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)

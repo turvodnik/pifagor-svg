@@ -2,9 +2,25 @@ import SwiftUI
 import WebKit
 import PifagorSVGCore
 
+struct SVGPreviewColors {
+    var current: Color
+    var stroke: Color
+    var fill: Color
+    var background: Color
+
+    static let defaults = SVGPreviewColors(
+        current: .black,
+        stroke: .black,
+        fill: .black,
+        background: Color(red: 0.98, green: 0.98, blue: 0.99)
+    )
+}
+
 struct SVGPreview: NSViewRepresentable {
     let svg: String
-    let previewColor: Color
+    var colors: SVGPreviewColors = .defaults
+    var showsCheckerboard = true
+    var stageLimit: CGFloat = 140
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -30,29 +46,25 @@ struct SVGPreview: NSViewRepresentable {
               margin: 0;
               width: 100%;
               height: 100%;
-              color: \(previewColor.hexForHTML);
+              color: \(colors.current.hexForHTML);
               display: flex;
               align-items: center;
               justify-content: center;
               overflow: hidden;
-              background-color: #fafbfc;
+              background-color: \(colors.background.hexForHTML);
             }
             body::before {
               content: "";
               position: fixed;
               inset: 0;
-              background:
-                linear-gradient(45deg, #9aa4ad 25%, transparent 25%),
-                linear-gradient(-45deg, #9aa4ad 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #9aa4ad 75%),
-                linear-gradient(-45deg, transparent 75%, #9aa4ad 75%);
+              background: \(checkerBackground);
               background-size: 64px 64px;
               background-position: 0 0, 0 32px, 32px -32px, -32px 0;
               opacity: 0.075;
             }
             .stage {
-              width: min(78vw, 180px);
-              height: min(78vh, 180px);
+              width: min(70vw, \(Int(stageLimit))px);
+              height: min(70vh, \(Int(stageLimit))px);
               display: flex;
               align-items: center;
               justify-content: center;
@@ -64,6 +76,14 @@ struct SVGPreview: NSViewRepresentable {
               max-height: 100%;
               width: 100%;
               height: 100%;
+            }
+            svg[stroke]:not([stroke="none"]),
+            svg [stroke]:not([stroke="none"]) {
+              stroke: \(colors.stroke.hexForHTML) !important;
+            }
+            svg[fill]:not([fill="none"]),
+            svg [fill]:not([fill="none"]) {
+              fill: \(colors.fill.hexForHTML) !important;
             }
           </style>
         </head>
@@ -86,6 +106,19 @@ struct SVGPreview: NSViewRepresentable {
         }
 
         return result.fullSVG
+    }
+
+    private var checkerBackground: String {
+        guard showsCheckerboard else {
+            return "none"
+        }
+
+        return """
+        linear-gradient(45deg, #9aa4ad 25%, transparent 25%),
+        linear-gradient(-45deg, #9aa4ad 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #9aa4ad 75%),
+        linear-gradient(-45deg, transparent 75%, #9aa4ad 75%)
+        """
     }
 }
 

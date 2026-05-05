@@ -27,7 +27,11 @@ public struct SVGFileProcessor {
             throw SVGOptimizationError.manualReviewRequired(result.warnings)
         }
 
-        let outputURL = SVGFileNamer.optimizedURL(for: inputURL, fileManager: fileManager)
+        let outputURL = SVGFileNamer.optimizedURL(for: inputURL, options: options, fileManager: fileManager)
+        try fileManager.createDirectory(
+            at: outputURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         try result.fullSVG.write(to: outputURL, atomically: true, encoding: .utf8)
         return outputURL
     }

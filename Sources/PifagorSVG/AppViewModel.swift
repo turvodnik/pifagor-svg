@@ -14,7 +14,10 @@ final class AppViewModel: ObservableObject {
     @Published var selectedFiles: [URL] = []
     @Published var selectedFileIndex = 0
     @Published var profileState = SVGProfileState()
-    @Published var previewColor = Color.black
+    @Published var previewCurrentColor = Color.black
+    @Published var previewStrokeColor = Color.black
+    @Published var previewFillColor = Color.black
+    @Published var previewBackgroundColor = Color(red: 0.98, green: 0.98, blue: 0.99)
     @Published var isDropTargeted = false
 
     private let optimizer = SVGOptimizer()
@@ -38,6 +41,15 @@ final class AppViewModel: ObservableObject {
 
     var activeProfileDescription: String {
         activeProfile.description
+    }
+
+    var previewColors: SVGPreviewColors {
+        SVGPreviewColors(
+            current: previewCurrentColor,
+            stroke: previewStrokeColor,
+            fill: previewFillColor,
+            background: previewBackgroundColor
+        )
     }
 
     var canSaveCodeResult: Bool {
@@ -314,7 +326,7 @@ final class AppViewModel: ObservableObject {
             await MainActor.run {
                 self.warnings = skipped
                 self.statusText = skipped.isEmpty
-                    ? "Готово: создано \(created) файлов -opt.svg по текущим настройкам."
+                    ? "Готово: сохранено \(created) SVG по настройкам активного профиля."
                     : "Создано \(created), пропущено \(skipped.count)."
             }
         }
@@ -323,6 +335,22 @@ final class AppViewModel: ObservableObject {
     func saveOptimizedCode() {
         guard canSaveCodeResult else {
             statusText = "Нет оптимизированного SVG для сохранения."
+            return
+        }
+
+        if let currentFileURL {
+            let outputURL = SVGFileNamer.optimizedURL(for: currentFileURL, options: options)
+            do {
+                try FileManager.default.createDirectory(
+                    at: outputURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try optimizedCode.write(to: outputURL, atomically: true, encoding: .utf8)
+                statusText = "Сохранено: \(outputURL.lastPathComponent)."
+            } catch {
+                warnings = ["\(error)"]
+                statusText = "Не удалось сохранить текущий SVG."
+            }
             return
         }
 
@@ -402,7 +430,7 @@ final class AppViewModel: ObservableObject {
         guard let currentFileURL else {
             return "icon-opt.svg"
         }
-        return SVGFileNamer.optimizedURL(for: currentFileURL).lastPathComponent
+        return SVGFileNamer.optimizedURL(for: currentFileURL, options: options).lastPathComponent
     }
 
     private func copyToPasteboard(_ value: String) {

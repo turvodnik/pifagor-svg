@@ -1,3 +1,4 @@
+import AppKit
 import PifagorSVGCore
 import SwiftUI
 import UniformTypeIdentifiers
@@ -20,13 +21,13 @@ struct ContentView: View {
                     title: "Оригинал: \(viewModel.currentFileName)",
                     code: $viewModel.originalCode,
                     previewSVG: viewModel.originalCode,
-                    previewColor: viewModel.previewColor
+                    previewColors: viewModel.previewColors
                 )
                 CodeColumn(
                     title: "Результат",
                     code: $viewModel.optimizedCode,
                     previewSVG: viewModel.optimizedCode,
-                    previewColor: viewModel.previewColor
+                    previewColors: viewModel.previewColors
                 )
             }
             Divider()
@@ -105,10 +106,7 @@ private struct ToolbarView: View {
                     isShowingProfileManager = true
                 }
 
-                HStack(spacing: 5) {
-                    ColorPicker("Цвет предпросмотра", selection: $viewModel.previewColor)
-                    InfoTip("Меняет только цвет предпросмотра внутри Pifagor SVG. В сохраненный SVG этот цвет не записывается, чтобы Bricks и CSS могли управлять цветом сами.")
-                }
+                PreviewColorControls(viewModel: viewModel)
 
                 Spacer()
 
@@ -129,8 +127,8 @@ private struct ToolbarView: View {
                 }
 
                 ToolbarAction(
-                    title: "Сохранить -opt.svg",
-                    tip: "Сохраняет текущий результат отдельным SVG-файлом. Оригинал не перезаписывается.",
+                    title: "Сохранить",
+                    tip: "Сохраняет только текущий выбранный и отредактированный SVG по настройкам активного профиля: папка, префикс, суффикс и перезапись.",
                     isDisabled: !viewModel.canSaveCodeResult
                 ) {
                     viewModel.saveOptimizedCode()
@@ -150,6 +148,39 @@ private struct ToolbarView: View {
             get: { viewModel.profileState.activeProfileID },
             set: { viewModel.setActiveProfile(id: $0) }
         )
+    }
+}
+
+private struct PreviewColorControls: View {
+    @ObservedObject var viewModel: AppViewModel
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Text("Цвета предпросмотра")
+                .font(.callout)
+            CompactColorPicker(title: "current", selection: $viewModel.previewCurrentColor)
+            CompactColorPicker(title: "stroke", selection: $viewModel.previewStrokeColor)
+            CompactColorPicker(title: "fill", selection: $viewModel.previewFillColor)
+            CompactColorPicker(title: "фон", selection: $viewModel.previewBackgroundColor)
+            InfoTip("Эти цвета меняют только предпросмотр в приложении. В SVG они не записываются. Так можно проверить белую иконку на сером фоне или отдельно увидеть stroke/fill.")
+        }
+    }
+}
+
+private struct CompactColorPicker: View {
+    let title: String
+    @Binding var selection: Color
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ColorPicker(title, selection: $selection, supportsOpacity: false)
+                .labelsHidden()
+                .frame(width: 28)
+        }
+        .help(title)
     }
 }
 
@@ -399,6 +430,44 @@ private struct ProfileEditorView: View {
                 }
             }
 
+            SettingsSection(title: "Сохранение файлов") {
+                InfoRow("Папка", tip: "Туда будет сохраняться текущий файл и массовая оптимизация. «Та же папка» сохраняет рядом с оригиналом.") {
+                    Picker("", selection: $draft.options.outputDirectoryMode) {
+                        Text("Та же папка").tag(SVGOutputDirectoryMode.sameFolder)
+                        Text("Другая папка").tag(SVGOutputDirectoryMode.custom)
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+
+                if draft.options.outputDirectoryMode == .custom {
+                    HStack(spacing: 8) {
+                        InfoRow("Куда", tip: "Путь к папке, куда будут сохраняться новые SVG по этому профилю.") {
+                            TextField("/Users/...", text: $draft.options.customOutputDirectory)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(minWidth: 280)
+                        }
+                        Button("Выбрать") {
+                            chooseOutputFolder()
+                        }
+                    }
+                }
+
+                InfoRow("Префикс", tip: "Добавляется перед исходным именем файла. Например prefix icon.svg станет prefixicon-opt.svg.") {
+                    TextField("", text: $draft.options.outputPrefix)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 140)
+                }
+
+                InfoRow("Суффикс", tip: "Добавляется после исходного имени файла. По умолчанию -opt: icon.svg становится icon-opt.svg.") {
+                    TextField("-opt", text: $draft.options.outputSuffix)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 140)
+                }
+
+                ToggleRow("Заменять существующий результат", tip: "Если включено, файл с таким именем будет перезаписан. Если выключено, приложение создаст -2, -3 и так далее.", isOn: $draft.options.overwriteExistingOutput)
+            }
+
             SettingsSection(title: "Размер SVG") {
                 InfoRow("Режим", tip: "Без размеров удаляет width/height и оставляет viewBox. Это лучший вариант для Bricks и CSS. 1em удобен для inline HTML. Фиксированный размер записывает width/height.") {
                     Picker("", selection: $draft.options.sizeMode) {
@@ -413,9 +482,7 @@ private struct ProfileEditorView: View {
                 if draft.options.sizeMode == .fixed {
                     HStack(spacing: 10) {
                         InfoRow("Ширина", tip: "Число для width. Единица выбирается рядом: px, em, rem или %.") {
-                            TextField("24", text: $draft.options.fixedWidth)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 70)
+                            NumberStepperField(value: $draft.options.fixedWidth, fallback: 24, step: 1, width: 78)
                         }
 
                         Toggle("Связать", isOn: $draft.options.lockSize)
@@ -423,9 +490,7 @@ private struct ProfileEditorView: View {
                             .help("Если включено, height будет таким же как width.")
 
                         InfoRow("Высота", tip: "Число для height. Используется, когда связь ширины и высоты выключена.") {
-                            TextField("24", text: $draft.options.fixedHeight)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 70)
+                            NumberStepperField(value: $draft.options.fixedHeight, fallback: 24, step: 1, width: 78)
                                 .disabled(draft.options.lockSize)
                         }
 
@@ -452,9 +517,7 @@ private struct ProfileEditorView: View {
                 }
 
                 InfoRow("Цвет stroke", tip: "Используется только когда Stroke = «Конкретный». Например #008dcc.") {
-                    TextField("#000000", text: $draft.options.strokeColor)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
+                    HexColorField(hex: $draft.options.strokeColor)
                         .disabled(draft.options.strokeColorMode != .custom)
                 }
 
@@ -470,9 +533,7 @@ private struct ProfileEditorView: View {
                 }
 
                 InfoRow("Цвет fill", tip: "Используется только когда Fill = «Конкретный».") {
-                    TextField("#000000", text: $draft.options.fillColor)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
+                    HexColorField(hex: $draft.options.fillColor)
                         .disabled(draft.options.fillColorMode != .custom)
                 }
 
@@ -483,9 +544,7 @@ private struct ProfileEditorView: View {
                     }
                     .labelsHidden()
                     .frame(width: 160)
-                    TextField("1.5", text: $draft.options.strokeWidth)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 70)
+                    NumberStepperField(value: $draft.options.strokeWidth, fallback: 1.5, step: 0.25, width: 78)
                         .disabled(draft.options.strokeWidthMode != .set)
                 }
             }
@@ -507,6 +566,17 @@ private struct ProfileEditorView: View {
                     .foregroundStyle(.secondary)
                 InfoTip("Эти правила не отключаются в профилях, потому что они защищают WordPress, браузер и предпросмотр от активного или внешнего содержимого.")
             }
+        }
+    }
+
+    private func chooseOutputFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Выберите папку для сохранения SVG"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url {
+            draft.options.customOutputDirectory = url.path
         }
     }
 }
@@ -531,6 +601,71 @@ private struct InfoRow<Content: View>: View {
             }
             content
         }
+    }
+}
+
+private struct HexColorField: View {
+    @Binding var hex: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ColorPicker("", selection: colorBinding, supportsOpacity: false)
+                .labelsHidden()
+                .frame(width: 34)
+            TextField("#000000", text: normalizedHexBinding)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 110)
+        }
+    }
+
+    private var colorBinding: Binding<Color> {
+        Binding(
+            get: { Color(hexString: hex) ?? .black },
+            set: { hex = $0.hexString }
+        )
+    }
+
+    private var normalizedHexBinding: Binding<String> {
+        Binding(
+            get: { hex },
+            set: { value in
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                hex = trimmed.hasPrefix("#") ? trimmed : "#\(trimmed)"
+            }
+        )
+    }
+}
+
+private struct NumberStepperField: View {
+    @Binding var value: String
+    let fallback: Double
+    let step: Double
+    let width: CGFloat
+
+    var body: some View {
+        HStack(spacing: 5) {
+            TextField("", text: $value)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: width)
+            Stepper("", value: numberBinding, in: 0...9999, step: step)
+                .labelsHidden()
+        }
+    }
+
+    private var numberBinding: Binding<Double> {
+        Binding(
+            get: { Double(value.trimmingCharacters(in: .whitespacesAndNewlines)) ?? fallback },
+            set: { value = formatted($0) }
+        )
+    }
+
+    private func formatted(_ number: Double) -> String {
+        if number.rounded() == number {
+            return String(Int(number))
+        }
+        return String(format: "%.2f", number)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
     }
 }
 
@@ -625,8 +760,10 @@ private struct FileNavigatorView: View {
                         ForEach(Array(viewModel.selectedFiles.enumerated()), id: \.offset) { index, url in
                             FileChip(
                                 index: index,
+                                url: url,
                                 fileName: url.lastPathComponent,
-                                isSelected: index == viewModel.selectedFileIndex
+                                isSelected: index == viewModel.selectedFileIndex,
+                                previewColors: viewModel.previewColors
                             ) {
                                 viewModel.selectFile(at: index)
                             }
@@ -634,7 +771,7 @@ private struct FileNavigatorView: View {
                     }
                     .padding(.bottom, 2)
                 }
-                .frame(height: 38)
+                .frame(height: 44)
             }
         }
         .padding(.horizontal, 14)
@@ -644,9 +781,12 @@ private struct FileNavigatorView: View {
 
 private struct FileChip: View {
     let index: Int
+    let url: URL
     let fileName: String
     let isSelected: Bool
+    let previewColors: SVGPreviewColors
     let action: () -> Void
+    @State private var svg = ""
 
     var body: some View {
         Button(action: action) {
@@ -655,12 +795,21 @@ private struct FileChip: View {
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(isSelected ? Color.white : Color.secondary)
 
+                SVGPreview(
+                    svg: svg,
+                    colors: previewColors,
+                    showsCheckerboard: false,
+                    stageLimit: 20
+                )
+                .frame(width: 22, height: 22)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+
                 Text(fileName)
                     .font(.caption)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .frame(width: 176, height: 28, alignment: .leading)
+            .frame(width: 206, height: 32, alignment: .leading)
             .padding(.horizontal, 10)
             .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.10))
             .foregroundStyle(isSelected ? Color.white : Color.primary)
@@ -672,6 +821,14 @@ private struct FileChip: View {
         }
         .buttonStyle(.plain)
         .help(fileName)
+        .onAppear(perform: loadSVG)
+        .onChange(of: url) { _, _ in
+            loadSVG()
+        }
+    }
+
+    private func loadSVG() {
+        svg = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
 }
 
@@ -679,7 +836,7 @@ private struct CodeColumn: View {
     let title: String
     @Binding var code: String
     let previewSVG: String
-    let previewColor: Color
+    let previewColors: SVGPreviewColors
 
     var body: some View {
         VStack(spacing: 0) {
@@ -689,15 +846,16 @@ private struct CodeColumn: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
 
-            SVGPreview(svg: previewSVG, previewColor: previewColor)
-                .frame(minHeight: 220, idealHeight: 260)
+            VSplitView {
+                SVGPreview(svg: previewSVG, colors: previewColors, stageLimit: 128)
+                    .frame(minHeight: 120, idealHeight: 170)
 
-            Divider()
-
-            TextEditor(text: $code)
-                .font(.system(.body, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .padding(8)
+                TextEditor(text: $code)
+                    .font(.system(.body, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .frame(minHeight: 260)
+            }
         }
         .frame(minWidth: 420)
     }
@@ -729,5 +887,31 @@ private struct StatusView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private extension Color {
+    init?(hexString: String) {
+        let cleaned = hexString
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+
+        guard cleaned.count == 6,
+              let value = Int(cleaned, radix: 16) else {
+            return nil
+        }
+
+        let red = Double((value >> 16) & 0xFF) / 255.0
+        let green = Double((value >> 8) & 0xFF) / 255.0
+        let blue = Double(value & 0xFF) / 255.0
+        self = Color(red: red, green: green, blue: blue)
+    }
+
+    var hexString: String {
+        let nsColor = NSColor(self).usingColorSpace(.deviceRGB) ?? .black
+        let red = Int((nsColor.redComponent * 255).rounded())
+        let green = Int((nsColor.greenComponent * 255).rounded())
+        let blue = Int((nsColor.blueComponent * 255).rounded())
+        return String(format: "#%02X%02X%02X", red, green, blue)
     }
 }

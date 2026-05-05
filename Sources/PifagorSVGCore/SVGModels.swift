@@ -55,6 +55,11 @@ public enum SVGStrokeWidthMode: String, CaseIterable, Codable, Sendable {
     case preserve
 }
 
+public enum SVGOutputDirectoryMode: String, CaseIterable, Codable, Sendable {
+    case sameFolder
+    case custom
+}
+
 public enum SVGUserProfileKind: String, CaseIterable, Codable, Sendable {
     case recommended
     case custom
@@ -84,6 +89,41 @@ public struct SVGOptimizationOptions: Codable, Equatable, Sendable {
     public var removeIDs: Bool
     public var unwrapEmptyGroups: Bool
     public var requireNoInternalReferences: Bool
+    public var outputPrefix: String
+    public var outputSuffix: String
+    public var overwriteExistingOutput: Bool
+    public var outputDirectoryMode: SVGOutputDirectoryMode
+    public var customOutputDirectory: String
+
+    private enum CodingKeys: String, CodingKey {
+        case sizeMode
+        case fixedWidth
+        case fixedHeight
+        case sizeUnit
+        case lockSize
+        case strokeWidth
+        case strokeWidthMode
+        case removeBackground
+        case colorMode
+        case customColor
+        case strokeColorMode
+        case strokeColor
+        case fillColorMode
+        case fillColor
+        case movePaintToRoot
+        case convertInlineStyles
+        case removeSafeClipPaths
+        case expandUseReferences
+        case removeUnusedDefs
+        case removeIDs
+        case unwrapEmptyGroups
+        case requireNoInternalReferences
+        case outputPrefix
+        case outputSuffix
+        case overwriteExistingOutput
+        case outputDirectoryMode
+        case customOutputDirectory
+    }
 
     public init(
         profile: SVGOptimizationProfile = .bricksCurrentColor,
@@ -109,7 +149,12 @@ public struct SVGOptimizationOptions: Codable, Equatable, Sendable {
         removeUnusedDefs: Bool = true,
         removeIDs: Bool = true,
         unwrapEmptyGroups: Bool = true,
-        requireNoInternalReferences: Bool = true
+        requireNoInternalReferences: Bool = true,
+        outputPrefix: String = "",
+        outputSuffix: String = "-opt",
+        overwriteExistingOutput: Bool = false,
+        outputDirectoryMode: SVGOutputDirectoryMode = .sameFolder,
+        customOutputDirectory: String = ""
     ) {
         let legacySizeMode: SVGSizeMode
         switch profile {
@@ -143,6 +188,42 @@ public struct SVGOptimizationOptions: Codable, Equatable, Sendable {
         self.removeIDs = removeIDs
         self.unwrapEmptyGroups = unwrapEmptyGroups
         self.requireNoInternalReferences = requireNoInternalReferences
+        self.outputPrefix = outputPrefix
+        self.outputSuffix = outputSuffix
+        self.overwriteExistingOutput = overwriteExistingOutput
+        self.outputDirectoryMode = outputDirectoryMode
+        self.customOutputDirectory = customOutputDirectory
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.sizeMode = try container.decodeIfPresent(SVGSizeMode.self, forKey: .sizeMode) ?? .none
+        self.fixedWidth = try container.decodeIfPresent(String.self, forKey: .fixedWidth) ?? "24"
+        self.fixedHeight = try container.decodeIfPresent(String.self, forKey: .fixedHeight) ?? "24"
+        self.sizeUnit = try container.decodeIfPresent(SVGSizeUnit.self, forKey: .sizeUnit) ?? .px
+        self.lockSize = try container.decodeIfPresent(Bool.self, forKey: .lockSize) ?? true
+        self.strokeWidth = try container.decodeIfPresent(String.self, forKey: .strokeWidth) ?? "1.5"
+        self.strokeWidthMode = try container.decodeIfPresent(SVGStrokeWidthMode.self, forKey: .strokeWidthMode) ?? .set
+        self.removeBackground = try container.decodeIfPresent(Bool.self, forKey: .removeBackground) ?? false
+        self.colorMode = try container.decodeIfPresent(SVGColorMode.self, forKey: .colorMode) ?? .currentColor
+        self.customColor = try container.decodeIfPresent(String.self, forKey: .customColor) ?? "#000000"
+        self.strokeColorMode = try container.decodeIfPresent(SVGColorMode.self, forKey: .strokeColorMode) ?? colorMode
+        self.strokeColor = try container.decodeIfPresent(String.self, forKey: .strokeColor) ?? customColor
+        self.fillColorMode = try container.decodeIfPresent(SVGFillColorMode.self, forKey: .fillColorMode) ?? SVGFillColorMode(colorMode)
+        self.fillColor = try container.decodeIfPresent(String.self, forKey: .fillColor) ?? customColor
+        self.movePaintToRoot = try container.decodeIfPresent(Bool.self, forKey: .movePaintToRoot) ?? true
+        self.convertInlineStyles = try container.decodeIfPresent(Bool.self, forKey: .convertInlineStyles) ?? true
+        self.removeSafeClipPaths = try container.decodeIfPresent(Bool.self, forKey: .removeSafeClipPaths) ?? true
+        self.expandUseReferences = try container.decodeIfPresent(Bool.self, forKey: .expandUseReferences) ?? true
+        self.removeUnusedDefs = try container.decodeIfPresent(Bool.self, forKey: .removeUnusedDefs) ?? true
+        self.removeIDs = try container.decodeIfPresent(Bool.self, forKey: .removeIDs) ?? true
+        self.unwrapEmptyGroups = try container.decodeIfPresent(Bool.self, forKey: .unwrapEmptyGroups) ?? true
+        self.requireNoInternalReferences = try container.decodeIfPresent(Bool.self, forKey: .requireNoInternalReferences) ?? true
+        self.outputPrefix = try container.decodeIfPresent(String.self, forKey: .outputPrefix) ?? ""
+        self.outputSuffix = try container.decodeIfPresent(String.self, forKey: .outputSuffix) ?? "-opt"
+        self.overwriteExistingOutput = try container.decodeIfPresent(Bool.self, forKey: .overwriteExistingOutput) ?? false
+        self.outputDirectoryMode = try container.decodeIfPresent(SVGOutputDirectoryMode.self, forKey: .outputDirectoryMode) ?? .sameFolder
+        self.customOutputDirectory = try container.decodeIfPresent(String.self, forKey: .customOutputDirectory) ?? ""
     }
 
     public static let bricksDefault = SVGOptimizationOptions()
