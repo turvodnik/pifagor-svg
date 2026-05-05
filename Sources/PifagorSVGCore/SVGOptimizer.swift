@@ -636,6 +636,11 @@ public struct SVGOptimizer {
             options: .regularExpression
         )
         return withoutInterTagWhitespace
+            .replacingOccurrences(
+                of: #"\s+xmlns="http://www\.w3\.org/2000/svg""#,
+                with: "",
+                options: .regularExpression
+            )
             .replacingOccurrences(of: "\n", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }

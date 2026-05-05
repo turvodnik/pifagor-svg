@@ -14,7 +14,7 @@
       <key>NSMenuItem</key>
       <dict>
         <key>default</key>
-        <string>Optimize with Pifagor SVG</string>
+        <string>Очистить SVG в Pifagor SVG</string>
       </dict>
       <key>NSMessage</key>
       <string>runWorkflowAsService</string>
@@ -22,12 +22,21 @@
       <dict>
         <key>NSApplicationIdentifier</key>
         <string>com.apple.finder</string>
+        <key>NSTextContent</key>
+        <string>FilePath</string>
+        <key>NSServiceCategory</key>
+        <string>public.item</string>
       </dict>
       <key>NSSendFileTypes</key>
       <array>
+        <string>public.svg-image</string>
         <string>public.item</string>
         <string>public.folder</string>
-        <string>public.svg-image</string>
+      </array>
+      <key>NSSendTypes</key>
+      <array>
+        <string>public.file-url</string>
+        <string>NSFilenamesPboardType</string>
       </array>
     </dict>
   </array>

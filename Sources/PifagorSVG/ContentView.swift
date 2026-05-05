@@ -155,14 +155,34 @@ private struct PreviewColorControls: View {
     @ObservedObject var viewModel: AppViewModel
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 8) {
             Text("Цвета предпросмотра")
-                .font(.callout)
-            CompactColorPicker(title: "current", selection: $viewModel.previewCurrentColor)
+                .font(.callout.weight(.semibold))
+                .fixedSize()
             CompactColorPicker(title: "stroke", selection: $viewModel.previewStrokeColor)
             CompactColorPicker(title: "fill", selection: $viewModel.previewFillColor)
             CompactColorPicker(title: "фон", selection: $viewModel.previewBackgroundColor)
-            InfoTip("Эти цвета меняют только предпросмотр в приложении. В SVG они не записываются. Так можно проверить белую иконку на сером фоне или отдельно увидеть stroke/fill.")
+            PreviewColorResetButton(reset: viewModel.resetPreviewColors)
+            InfoTip("Эти цвета меняют только предпросмотр в приложении. В SVG они не записываются. Так можно проверить stroke, fill и белую иконку на сером фоне.")
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+private struct PreviewColorResetButton: View {
+    let reset: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Button(action: reset) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.counterclockwise")
+                    Text("Сброс")
+                }
+            }
+            .controlSize(.small)
+            .help("Сбросить цвета предпросмотра по умолчанию")
+            InfoTip("Возвращает цвета предпросмотра к значениям по умолчанию: stroke и fill черные, фон почти белый.")
         }
     }
 }
@@ -172,14 +192,17 @@ private struct CompactColorPicker: View {
     @Binding var selection: Color
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Text(title)
-                .font(.caption)
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .frame(minWidth: 34, alignment: .trailing)
             ColorPicker(title, selection: $selection, supportsOpacity: false)
                 .labelsHidden()
-                .frame(width: 28)
+                .controlSize(.small)
+                .frame(width: 34)
         }
+        .padding(.horizontal, 1)
         .help(title)
     }
 }
@@ -480,27 +503,28 @@ private struct ProfileEditorView: View {
                 }
 
                 if draft.options.sizeMode == .fixed {
-                    HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 10) {
                         InfoRow("Ширина", tip: "Число для width. Единица выбирается рядом: px, em, rem или %.") {
-                            NumberStepperField(value: $draft.options.fixedWidth, fallback: 24, step: 1, width: 78)
+                            NumberStepperField(value: $draft.options.fixedWidth, fallback: 24, step: 1, width: 96)
                         }
 
-                        Toggle("Связать", isOn: $draft.options.lockSize)
-                            .toggleStyle(.checkbox)
-                            .help("Если включено, height будет таким же как width.")
+                        ToggleRow("Одинаковая ширина и высота", tip: "Если включено, height будет таким же как width. Это удобно для квадратных иконок 24x24, 32x32 и похожих наборов.", isOn: $draft.options.lockSize)
 
                         InfoRow("Высота", tip: "Число для height. Используется, когда связь ширины и высоты выключена.") {
-                            NumberStepperField(value: $draft.options.fixedHeight, fallback: 24, step: 1, width: 78)
+                            NumberStepperField(value: $draft.options.fixedHeight, fallback: 24, step: 1, width: 96)
                                 .disabled(draft.options.lockSize)
                         }
 
-                        Picker("Ед.", selection: $draft.options.sizeUnit) {
-                            Text("px").tag(SVGSizeUnit.px)
-                            Text("em").tag(SVGSizeUnit.em)
-                            Text("rem").tag(SVGSizeUnit.rem)
-                            Text("%").tag(SVGSizeUnit.percent)
+                        InfoRow("Единицы", tip: "Единица измерения для width и height: px для фиксированных файлов, em/rem/% для гибкой HTML-верстки.") {
+                            Picker("", selection: $draft.options.sizeUnit) {
+                                Text("px").tag(SVGSizeUnit.px)
+                                Text("em").tag(SVGSizeUnit.em)
+                                Text("rem").tag(SVGSizeUnit.rem)
+                                Text("%").tag(SVGSizeUnit.percent)
+                            }
+                            .labelsHidden()
+                            .frame(width: 130)
                         }
-                        .frame(width: 90)
                     }
                 }
             }

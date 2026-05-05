@@ -52,6 +52,13 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    func resetPreviewColors() {
+        previewCurrentColor = SVGPreviewColors.defaults.current
+        previewStrokeColor = SVGPreviewColors.defaults.stroke
+        previewFillColor = SVGPreviewColors.defaults.fill
+        previewBackgroundColor = SVGPreviewColors.defaults.background
+    }
+
     var canSaveCodeResult: Bool {
         !optimizedCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

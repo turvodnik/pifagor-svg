@@ -16,10 +16,13 @@ chmod +x "$BIN_DIR/pifagor-svg-cli"
 mkdir -p "$SERVICES_DIR"
 rm -rf "$SERVICES_DIR/$WORKFLOW_NAME"
 cp -R "$ROOT_DIR/QuickActions/$WORKFLOW_NAME" "$SERVICES_DIR/$WORKFLOW_NAME"
+xattr -dr com.apple.quarantine "$SERVICES_DIR/$WORKFLOW_NAME" 2>/dev/null || true
 
+/System/Library/CoreServices/pbs -update || true
 /System/Library/CoreServices/pbs -flush || true
+killall Finder 2>/dev/null || true
 
 echo "Quick Action installed:"
 echo "$SERVICES_DIR/$WORKFLOW_NAME"
 echo ""
-echo "Finder: right click SVG/folder -> Quick Actions -> Optimize with Pifagor SVG"
+echo "Finder: right click SVG/folder -> Quick Actions -> Очистить SVG в Pifagor SVG"

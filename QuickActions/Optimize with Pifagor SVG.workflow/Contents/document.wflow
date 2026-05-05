@@ -18,13 +18,13 @@
           <key>COMMAND_STRING</key>
           <string><![CDATA[export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 "$HOME/.local/bin/pifagor-svg-cli" -- "$@"
-status=$?
-if [ "$status" -eq 0 ]; then
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
   osascript -e 'display notification "Созданы SVG-файлы с суффиксом -opt.svg" with title "Pifagor SVG"'
 else
   osascript -e 'display notification "Некоторые SVG требуют ручного решения" with title "Pifagor SVG"'
 fi
-exit "$status"
+exit "$exit_code"
 ]]></string>
           <key>inputMethod</key>
           <integer>1</integer>
@@ -131,7 +131,7 @@ exit "$status"
     <key>presentationMode</key>
     <integer>15</integer>
     <key>processesInput</key>
-    <false/>
+    <true/>
     <key>serviceApplicationBundleID</key>
     <string>com.apple.finder</string>
     <key>serviceApplicationPath</key>
@@ -141,7 +141,7 @@ exit "$status"
     <key>serviceOutputTypeIdentifier</key>
     <string>com.apple.Automator.nothing</string>
     <key>serviceProcessesInput</key>
-    <false/>
+    <true/>
     <key>systemImageName</key>
     <string>NSTouchBarComposeTemplate</string>
     <key>useAutomaticInputType</key>

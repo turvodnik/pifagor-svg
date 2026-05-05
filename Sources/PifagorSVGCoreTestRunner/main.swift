@@ -259,6 +259,20 @@ try run("compact output has no extra whitespace between tags") {
     try expect(!result.compactSVG.contains(">  <"), "Expected compact SVG without inter-tag spaces")
 }
 
+try run("compact output omits xmlns for inline html copy") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M2 2h20v20H2z" fill="#000"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(input, options: .bricksDefault)
+
+    try expect(result.fullSVG.contains(#"xmlns="http://www.w3.org/2000/svg""#), "Expected full SVG to keep xmlns")
+    try expect(!result.compactSVG.contains("xmlns="), "Expected compact SVG for inline HTML without xmlns")
+    try expect(result.compactSVG.contains(#"viewBox="0 0 24 24""#), "Expected compact SVG to keep viewBox")
+}
+
 try run("output keeps a single xmlns declaration") {
     let input = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
