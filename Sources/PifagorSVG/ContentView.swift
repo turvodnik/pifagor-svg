@@ -73,15 +73,21 @@ private struct ToolbarView: View {
                 ToolbarAction(title: "Оптимизировать код", tip: "Пересчитывает SVG-код из левой колонки по активному профилю. Полезно после ручной правки кода.") {
                     viewModel.optimizeCurrentCode()
                 }
-                ToolbarAction(title: "Применить ко всем и сохранить", tip: "Применяет активный профиль ко всем выбранным SVG и сохраняет рядом файлы с суффиксом -opt.svg.") {
+                ToolbarAction(
+                    title: "Применить ко всем и сохранить",
+                    tip: "Применяет активный профиль ко всем выбранным SVG и сохраняет рядом файлы с суффиксом -opt.svg.",
+                    isDisabled: viewModel.selectedFiles.isEmpty
+                ) {
                     viewModel.batchOptimizeSelected()
                 }
-                .disabled(viewModel.selectedFiles.isEmpty)
 
-                ToolbarAction(title: "Очистить", tip: "Очищает загруженные SVG из приложения, чтобы выбрать новый набор без перезапуска.") {
+                ToolbarAction(
+                    title: "Очистить",
+                    tip: "Очищает загруженные SVG из приложения, чтобы выбрать новый набор без перезапуска.",
+                    isDisabled: !viewModel.hasSelectedFiles && viewModel.originalCode.isEmpty
+                ) {
                     viewModel.clearLoadedIcons()
                 }
-                .disabled(!viewModel.hasSelectedFiles && viewModel.originalCode.isEmpty)
             }
 
             HStack(spacing: 14) {
@@ -106,20 +112,29 @@ private struct ToolbarView: View {
 
                 Spacer()
 
-                ToolbarAction(title: "Скопировать полный SVG", tip: "Копирует читаемую версию результата с переносами строк. Удобно для проверки или хранения.") {
+                ToolbarAction(
+                    title: "Скопировать полный SVG",
+                    tip: "Копирует читаемую версию результата с переносами строк. Удобно для проверки или хранения.",
+                    isDisabled: !viewModel.canSaveCodeResult
+                ) {
                     viewModel.copyFullSVG()
                 }
-                .disabled(!viewModel.canSaveCodeResult)
 
-                ToolbarAction(title: "Скопировать компактный SVG", tip: "Копирует короткую версию без лишних пробелов и переносов. Удобно для прямой вставки в HTML.") {
+                ToolbarAction(
+                    title: "Скопировать компактный SVG",
+                    tip: "Копирует короткую версию без лишних пробелов и переносов. Удобно для прямой вставки в HTML.",
+                    isDisabled: viewModel.compactCode.isEmpty
+                ) {
                     viewModel.copyCompactSVG()
                 }
-                .disabled(viewModel.compactCode.isEmpty)
 
-                ToolbarAction(title: "Сохранить -opt.svg", tip: "Сохраняет текущий результат отдельным SVG-файлом. Оригинал не перезаписывается.") {
+                ToolbarAction(
+                    title: "Сохранить -opt.svg",
+                    tip: "Сохраняет текущий результат отдельным SVG-файлом. Оригинал не перезаписывается.",
+                    isDisabled: !viewModel.canSaveCodeResult
+                ) {
                     viewModel.saveOptimizedCode()
                 }
-                .disabled(!viewModel.canSaveCodeResult)
             }
 
             Text(viewModel.activeProfileDescription)
@@ -140,29 +155,67 @@ private struct ToolbarView: View {
 
 private struct InfoTip: View {
     let text: String
+    @State private var isHovering = false
+    @State private var isPinned = false
 
     init(_ text: String) {
         self.text = text
     }
 
     var body: some View {
-        Image(systemName: "info.circle")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .help(text)
+        Button {
+            isPinned.toggle()
+        } label: {
+            Text("i")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(isPinned ? Color.accentColor : Color.secondary)
+                .frame(width: 15, height: 15)
+                .overlay(
+                    Circle()
+                        .stroke(isPinned ? Color.accentColor : Color.secondary.opacity(0.65), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { isHovering in
+            self.isHovering = isHovering
+        }
+        .popover(isPresented: presentationBinding, arrowEdge: .top) {
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(12)
+                .frame(width: 300, alignment: .leading)
+        }
+        .help(text)
             .accessibilityLabel("Информация")
             .accessibilityHint(text)
+    }
+
+    private var presentationBinding: Binding<Bool> {
+        Binding(
+            get: { isHovering || isPinned },
+            set: { newValue in
+                if !newValue {
+                    isHovering = false
+                    isPinned = false
+                }
+            }
+        )
     }
 }
 
 private struct ToolbarAction: View {
     let title: String
     let tip: String
+    var isDisabled = false
     let action: () -> Void
 
     var body: some View {
         HStack(spacing: 4) {
             Button(title, action: action)
+                .disabled(isDisabled)
             InfoTip(tip)
         }
     }
@@ -280,19 +333,25 @@ private struct ProfileListView: View {
                 }
             }
 
-            ProfileButton(title: "Удалить", tip: "Удаляет выбранный пользовательский профиль. Рекомендованный профиль удалить нельзя.") {
+            ProfileButton(
+                title: "Удалить",
+                tip: "Удаляет выбранный пользовательский профиль. Рекомендованный профиль удалить нельзя.",
+                isDisabled: draft.isBuiltIn
+            ) {
                 viewModel.deleteProfile(id: selectedProfileID)
                 selectedProfileID = viewModel.activeProfile.id
                 draft = viewModel.activeProfile
             }
-            .disabled(draft.isBuiltIn)
 
-            ProfileButton(title: "Сбросить", tip: "Возвращает рекомендованный профиль к заводским настройкам: currentColor, без размеров и полная безопасная очистка.") {
+            ProfileButton(
+                title: "Сбросить",
+                tip: "Возвращает рекомендованный профиль к заводским настройкам: currentColor, без размеров и полная безопасная очистка.",
+                isDisabled: selectedProfileID != SVGUserProfile.recommendedID
+            ) {
                 viewModel.resetProfile(id: selectedProfileID)
                 draft = viewModel.activeProfile
                 selectedProfileID = draft.id
             }
-            .disabled(selectedProfileID != SVGUserProfile.recommendedID)
         }
     }
 }
@@ -300,12 +359,14 @@ private struct ProfileListView: View {
 private struct ProfileButton: View {
     let title: String
     let tip: String
+    var isDisabled = false
     let action: () -> Void
 
     var body: some View {
         HStack(spacing: 5) {
             Button(title, action: action)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .disabled(isDisabled)
             InfoTip(tip)
         }
     }
