@@ -275,4 +275,155 @@ try run("internal reference cleanup can be disabled for special cases") {
     try expect(result.fullSVG.contains(#"id="paint0""#), "Expected id to remain")
 }
 
+try run("profile store creates recommended profile and keeps it active") {
+    let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+    let store = SVGProfileStore(storageURL: tempDirectory.appendingPathComponent("profiles.json"))
+    let state = try store.load()
+
+    try expect(state.profiles.count == 1, "Expected one built-in profile on first load")
+    try expect(state.activeProfile.name == "Рекомендованный", "Expected recommended profile")
+    try expect(state.activeProfile.isBuiltIn, "Expected recommended profile to be built-in")
+    try expect(state.activeProfile.description.contains("Bricks Builder"), "Expected Bricks description")
+    try expect(state.activeProfile.options.sizeMode == .none, "Expected no size mode")
+    try expect(state.activeProfile.options.strokeColorMode == .currentColor, "Expected currentColor stroke")
+    try expect(state.activeProfile.options.fillColorMode == .currentColor, "Expected currentColor fill")
+    try expect(state.activeProfile.options.removeUnusedDefs, "Expected defs cleanup enabled")
+    try expect(state.activeProfile.options.removeSafeClipPaths, "Expected safe clip cleanup enabled")
+    try expect(state.activeProfile.options.convertInlineStyles, "Expected style cleanup enabled")
+    try expect(state.activeProfile.options.removeIDs, "Expected id cleanup enabled")
+    try expect(state.activeProfile.options.unwrapEmptyGroups, "Expected empty group cleanup enabled")
+    try expect(state.activeProfile.options.expandUseReferences, "Expected use expansion enabled")
+    try expect(state.activeProfile.options.requireNoInternalReferences, "Expected internal references blocked")
+}
+
+try run("profile store saves active custom profile and protects recommended deletion") {
+    let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+    let store = SVGProfileStore(storageURL: tempDirectory.appendingPathComponent("profiles.json"))
+    var state = try store.load()
+    let recommendedID = state.activeProfile.id
+    let custom = SVGUserProfile.custom(
+        name: "Blue 24px",
+        description: "Для синих фиксированных иконок.",
+        options: SVGOptimizationOptions(
+            sizeMode: .fixed,
+            fixedWidth: "24",
+            fixedHeight: "24",
+            sizeUnit: .px,
+            strokeWidth: "2",
+            strokeWidthMode: .set,
+            colorMode: .custom,
+            customColor: "#008dcc"
+        )
+    )
+    state.profiles.append(custom)
+    state.activeProfileID = custom.id
+    try store.save(state)
+
+    let reloaded = try store.load()
+    try expect(reloaded.activeProfile.name == "Blue 24px", "Expected custom active profile")
+    try expect(reloaded.activeProfile.options.sizeMode == .fixed, "Expected fixed size mode")
+    try expect(reloaded.activeProfile.options.sizeUnit == .px, "Expected px unit")
+
+    var afterDelete = try store.deleteProfile(id: recommendedID, in: reloaded)
+    try expect(afterDelete.profiles.contains { $0.id == recommendedID }, "Expected recommended profile to be protected")
+
+    afterDelete = try store.deleteProfile(id: custom.id, in: afterDelete)
+    try expect(!afterDelete.profiles.contains { $0.id == custom.id }, "Expected custom profile deletion")
+    try expect(afterDelete.activeProfile.id == recommendedID, "Expected fallback to recommended profile")
+}
+
+try run("recommended profile can be reset to factory defaults") {
+    let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+    let store = SVGProfileStore(storageURL: tempDirectory.appendingPathComponent("profiles.json"))
+    var state = try store.load()
+    let recommendedID = state.activeProfile.id
+    var edited = state.activeProfile
+    edited.name = "Мой Bricks"
+    edited.description = "Измененное описание"
+    edited.options.strokeWidth = "3"
+    state.replaceProfile(edited)
+    try store.save(state)
+
+    let reset = try store.resetBuiltInProfile(id: recommendedID, in: try store.load())
+    try expect(reset.activeProfile.name == "Рекомендованный", "Expected factory name")
+    try expect(reset.activeProfile.description.contains("CSS-управления"), "Expected factory description")
+    try expect(reset.activeProfile.options.strokeWidth == "1.5", "Expected factory stroke width")
+}
+
+try run("custom profile writes fixed rem size custom stroke fill and stroke width") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M4 12l4 4 12-12" stroke="#fff" stroke-width="1" fill="none"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(
+        input,
+        options: SVGOptimizationOptions(
+            sizeMode: .fixed,
+            fixedWidth: "2",
+            fixedHeight: "2",
+            sizeUnit: .rem,
+            strokeWidth: "2.25",
+            strokeWidthMode: .set,
+            colorMode: .custom,
+            customColor: "#008dcc",
+            fillColorMode: SVGFillColorMode.none
+        )
+    )
+
+    try expect(result.status == .optimized, "Expected optimized custom profile")
+    try expect(result.fullSVG.contains(#"width="2rem""#), "Expected rem width")
+    try expect(result.fullSVG.contains(#"height="2rem""#), "Expected rem height")
+    try expect(result.fullSVG.contains("stroke=\"#008dcc\""), "Expected custom stroke")
+    try expect(result.fullSVG.contains(#"stroke-width="2.25""#), "Expected custom stroke width")
+    try expect(result.fullSVG.contains(#"fill="none""#), "Expected fill none")
+}
+
+try run("legacy fixed profile writes fixed px size") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M2 2h20v20H2z" fill="#111"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(
+        input,
+        options: SVGOptimizationOptions(profile: .fixed24, fixedSize: "32")
+    )
+
+    try expect(result.fullSVG.contains(#"width="32px""#), "Expected legacy fixed width")
+    try expect(result.fullSVG.contains(#"height="32px""#), "Expected legacy fixed height")
+}
+
+try run("logo template preserves brand colors and keeps background by default") {
+    let input = """
+    <svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40">
+      <rect width="120" height="40" fill="#ffffff"/>
+      <path d="M10 10h30v20H10z" fill="#008dcc"/>
+      <path d="M50 10h30v20H50z" fill="#111111"/>
+    </svg>
+    """
+
+    let result = try SVGOptimizer().optimize(input, options: SVGUserProfile.logoTemplate.options)
+
+    try expect(result.status == .optimized, "Expected logo template to optimize safely")
+    try expect(result.fullSVG.contains("#008dcc"), "Expected blue brand color to remain")
+    try expect(result.fullSVG.contains("#111111"), "Expected dark brand color to remain")
+    try expect(result.fullSVG.contains("#ffffff"), "Expected background color to remain")
+    try expect(!result.fullSVG.contains("currentColor"), "Expected no currentColor conversion for logo")
+}
+
 print("All Pifagor SVG core tests passed")

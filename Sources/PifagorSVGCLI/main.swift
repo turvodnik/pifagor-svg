@@ -3,9 +3,10 @@ import PifagorSVGCore
 
 struct CLIOptions {
     var inputPaths: [String] = []
-    var profile: SVGOptimizationProfile = .bricksCurrentColor
-    var strokeWidth = "1.5"
-    var fixedSize = "24"
+    var legacyProfile: SVGOptimizationProfile?
+    var profileName: String?
+    var strokeWidth: String?
+    var fixedSize: String?
     var removeBackground = false
     var recursive = true
 }
@@ -13,6 +14,7 @@ struct CLIOptions {
 enum CLIError: Error, CustomStringConvertible {
     case missingValue(String)
     case unknownArgument(String)
+    case profileNotFound(String)
     case noInputs
 
     var description: String {
@@ -21,6 +23,8 @@ enum CLIError: Error, CustomStringConvertible {
             "У параметра \(option) нет значения."
         case .unknownArgument(let argument):
             "Неизвестный параметр: \(argument)"
+        case .profileNotFound(let name):
+            "Профиль не найден: \(name)."
         case .noInputs:
             "Передайте один или несколько SVG-файлов или папок."
         }
@@ -38,12 +42,7 @@ struct PifagorSVGCLI {
             }
 
             let processor = SVGFileProcessor()
-            let optimizationOptions = SVGOptimizationOptions(
-                profile: options.profile,
-                strokeWidth: options.strokeWidth,
-                fixedSize: options.fixedSize,
-                removeBackground: options.removeBackground
-            )
+            let optimizationOptions = try resolveOptimizationOptions(from: options)
 
             var failures = 0
             for file in files {
@@ -94,14 +93,16 @@ struct PifagorSVGCLI {
                 let value = try value(after: argument, in: arguments, at: &index)
                 switch value {
                 case "bricks", "bricks-current-color":
-                    options.profile = .bricksCurrentColor
+                    options.legacyProfile = .bricksCurrentColor
                 case "inline", "inline-1em":
-                    options.profile = .inline1em
+                    options.legacyProfile = .inline1em
                 case "fixed", "fixed24":
-                    options.profile = .fixed24
+                    options.legacyProfile = .fixed24
                 default:
                     throw CLIError.unknownArgument("--profile \(value)")
                 }
+            case "--profile-name":
+                options.profileName = try value(after: argument, in: arguments, at: &index)
             case "--stroke-width":
                 options.strokeWidth = try value(after: argument, in: arguments, at: &index)
             case "--fixed-size":
@@ -120,6 +121,46 @@ struct PifagorSVGCLI {
         }
 
         return options
+    }
+
+    private static func resolveOptimizationOptions(from options: CLIOptions) throws -> SVGOptimizationOptions {
+        if let legacyProfile = options.legacyProfile {
+            return SVGOptimizationOptions(
+                profile: legacyProfile,
+                strokeWidth: options.strokeWidth ?? "1.5",
+                fixedSize: options.fixedSize ?? "24",
+                removeBackground: options.removeBackground
+            )
+        }
+
+        let store = SVGProfileStore()
+        let state = try store.load()
+        let profile: SVGUserProfile
+        if let profileName = options.profileName {
+            guard let named = store.profile(named: profileName, in: state) else {
+                throw CLIError.profileNotFound(profileName)
+            }
+            profile = named
+        } else {
+            profile = state.activeProfile
+        }
+
+        var resolved = profile.options
+        if let strokeWidth = options.strokeWidth {
+            resolved.strokeWidthMode = .set
+            resolved.strokeWidth = strokeWidth
+        }
+        if let fixedSize = options.fixedSize {
+            resolved.sizeMode = .fixed
+            resolved.fixedWidth = fixedSize
+            resolved.fixedHeight = fixedSize
+            resolved.sizeUnit = .px
+            resolved.lockSize = true
+        }
+        if options.removeBackground {
+            resolved.removeBackground = true
+        }
+        return resolved
     }
 
     private static func value(
@@ -188,9 +229,10 @@ Pifagor SVG CLI
   pifagor-svg-cli [options] file.svg folder/
 
 Параметры:
-  --profile bricks|inline|fixed       Профиль оптимизации. По умолчанию bricks.
-  --stroke-width 1.5                  Толщина stroke для Bricks/inline.
-  --fixed-size 24                     Размер для fixed-профиля.
+  --profile-name "Название"           Использовать сохраненный профиль по названию.
+  --profile bricks|inline|fixed       Legacy-профиль. Если не передан, используется активный профиль приложения.
+  --stroke-width 1.5                  Переопределить толщину stroke.
+  --fixed-size 24                     Переопределить размер как fixed px.
   --remove-background                 Удалять full-viewBox фоновые rect.
   --no-recursive                      Не обходить вложенные папки.
 

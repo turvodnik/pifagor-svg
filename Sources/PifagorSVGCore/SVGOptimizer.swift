@@ -348,18 +348,18 @@ public struct SVGOptimizer {
         let uniqueFills = Set(fillValues)
         if uniqueFills.count == 1 {
             if options.movePaintToRoot {
-                root.setAttribute("fill", value: resolvedColorValue(original: uniqueFills.first, options: options))
+                root.setAttribute("fill", value: resolvedFillColorValue(original: uniqueFills.first, options: options))
                 for element in nonBackgroundElements {
                     element.removeAttribute(forName: "fill")
                 }
             } else {
                 for element in nonBackgroundElements {
                     if element.attributeValue("fill") != nil {
-                        element.setAttribute("fill", value: resolvedColorValue(original: element.attributeValue("fill"), options: options))
+                        element.setAttribute("fill", value: resolvedFillColorValue(original: element.attributeValue("fill"), options: options))
                     }
                 }
             }
-        } else if uniqueFills.count > 1 {
+        } else if uniqueFills.count > 1, options.fillColorMode != .preserve {
             warnings.append("Многоцветная fill-иконка сохранена без агрессивной замены цветов.")
         }
     }
@@ -372,9 +372,9 @@ public struct SVGOptimizer {
         if !options.movePaintToRoot {
             for element in paintElements {
                 if element.attributeValue("stroke") != nil {
-                    element.setAttribute("stroke", value: resolvedColorValue(original: element.attributeValue("stroke"), options: options))
+                    element.setAttribute("stroke", value: resolvedStrokeColorValue(original: element.attributeValue("stroke"), options: options))
                 }
-                if element.attributeValue("stroke-width") != nil {
+                if options.strokeWidthMode == .set, element.attributeValue("stroke-width") != nil {
                     element.setAttribute("stroke-width", value: options.strokeWidth)
                 }
             }
@@ -382,9 +382,14 @@ public struct SVGOptimizer {
         }
 
         let originalStroke = commonAttribute("stroke", in: paintElements) ?? root.attributeValue("stroke")
-        root.setAttribute("fill", value: "none")
-        root.setAttribute("stroke", value: resolvedColorValue(original: originalStroke, options: options))
-        root.setAttribute("stroke-width", value: options.strokeWidth)
+        root.setAttribute("fill", value: resolvedOutlineFillValue(root: root, paintElements: paintElements, options: options))
+        root.setAttribute("stroke", value: resolvedStrokeColorValue(original: originalStroke, options: options))
+
+        if let strokeWidth = resolvedStrokeWidthValue(root: root, paintElements: paintElements, options: options) {
+            root.setAttribute("stroke-width", value: strokeWidth)
+        } else {
+            root.removeAttribute(forName: "stroke-width")
+        }
 
         if let commonLineCap = commonAttribute("stroke-linecap", in: paintElements) {
             root.setAttribute("stroke-linecap", value: commonLineCap)
@@ -418,14 +423,14 @@ public struct SVGOptimizer {
         return first
     }
 
-    private func resolvedColorValue(original: String?, options: SVGOptimizationOptions) -> String {
-        switch options.colorMode {
+    private func resolvedStrokeColorValue(original: String?, options: SVGOptimizationOptions) -> String {
+        switch options.strokeColorMode {
         case .currentColor:
             return "currentColor"
         case .custom:
-            return options.customColor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return options.strokeColor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? "currentColor"
-                : options.customColor.trimmingCharacters(in: .whitespacesAndNewlines)
+                : options.strokeColor.trimmingCharacters(in: .whitespacesAndNewlines)
         case .preserve:
             return original?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
                 ? original!.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -433,18 +438,84 @@ public struct SVGOptimizer {
         }
     }
 
+    private func resolvedFillColorValue(original: String?, options: SVGOptimizationOptions) -> String {
+        switch options.fillColorMode {
+        case .currentColor:
+            return "currentColor"
+        case .custom:
+            return options.fillColor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "currentColor"
+                : options.fillColor.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .preserve:
+            return original?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? original!.trimmingCharacters(in: .whitespacesAndNewlines)
+                : "currentColor"
+        case .none:
+            return "none"
+        }
+    }
+
+    private func resolvedOutlineFillValue(
+        root: XMLElement,
+        paintElements: [XMLElement],
+        options: SVGOptimizationOptions
+    ) -> String {
+        if options.fillColorMode == .none {
+            return "none"
+        }
+
+        let hasActiveFill = paintElements.contains { element in
+            guard let fill = element.attributeValue("fill") ?? root.attributeValue("fill") else {
+                return false
+            }
+            return !fill.paintIsNone
+        }
+
+        guard hasActiveFill else {
+            return "none"
+        }
+
+        let original = commonAttribute("fill", in: paintElements) ?? root.attributeValue("fill")
+        return resolvedFillColorValue(original: original, options: options)
+    }
+
+    private func resolvedStrokeWidthValue(
+        root: XMLElement,
+        paintElements: [XMLElement],
+        options: SVGOptimizationOptions
+    ) -> String? {
+        switch options.strokeWidthMode {
+        case .set:
+            return options.strokeWidth
+        case .preserve:
+            return commonAttribute("stroke-width", in: paintElements) ?? root.attributeValue("stroke-width")
+        }
+    }
+
     private func applySizeRules(to root: XMLElement, options: SVGOptimizationOptions) {
-        switch options.profile {
-        case .bricksCurrentColor:
+        switch options.sizeMode {
+        case .none:
             root.removeAttribute(forName: "width")
             root.removeAttribute(forName: "height")
         case .inline1em:
             root.setAttribute("width", value: "1em")
             root.setAttribute("height", value: "1em")
-        case .fixed24:
-            root.setAttribute("width", value: options.fixedSize)
-            root.setAttribute("height", value: options.fixedSize)
+        case .fixed:
+            root.setAttribute("width", value: dimensionValue(options.fixedWidth, unit: options.sizeUnit))
+            root.setAttribute("height", value: dimensionValue(options.lockSize ? options.fixedWidth : options.fixedHeight, unit: options.sizeUnit))
         }
+    }
+
+    private func dimensionValue(_ value: String, unit: SVGSizeUnit) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let number = trimmed.isEmpty ? "24" : trimmed
+        if number.lowercased().hasSuffix("px")
+            || number.lowercased().hasSuffix("em")
+            || number.lowercased().hasSuffix("rem")
+            || number.hasSuffix("%") {
+            return number
+        }
+        return "\(number)\(unit.suffix)"
     }
 
     private func removeUnusedDefinitionContent(in root: XMLElement) {
