@@ -131,63 +131,102 @@ private struct FileNavigatorView: View {
     @ObservedObject var viewModel: AppViewModel
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Выбранные SVG")
-                .font(.callout.weight(.semibold))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("Выбранные SVG")
+                    .font(.callout.weight(.semibold))
 
-            Text(viewModel.selectedPositionText)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 90, alignment: .leading)
+                Text(viewModel.selectedPositionText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 90, alignment: .leading)
 
-            Button {
-                viewModel.selectPreviousFile()
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.bordered)
-            .disabled(!viewModel.hasMultipleSelectedFiles)
-            .help("Предыдущая SVG-иконка")
+                Button {
+                    viewModel.selectPreviousFile()
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.bordered)
+                .disabled(!viewModel.hasMultipleSelectedFiles)
+                .help("Предыдущая SVG-иконка")
 
-            Picker("Файл", selection: selectedFileBinding) {
-                if viewModel.selectedFiles.isEmpty {
-                    Text("Файлы не выбраны").tag(0)
-                } else {
-                    ForEach(Array(viewModel.selectedFiles.enumerated()), id: \.offset) { index, url in
-                        Text(url.lastPathComponent).tag(index)
-                    }
+                Button {
+                    viewModel.selectNextFile()
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.bordered)
+                .disabled(!viewModel.hasMultipleSelectedFiles)
+                .help("Следующая SVG-иконка")
+
+                Spacer()
+
+                if viewModel.hasSelectedFiles {
+                    Text("Нажмите на файл в ленте или листайте стрелками.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .labelsHidden()
-            .frame(minWidth: 280, maxWidth: 520)
-            .disabled(viewModel.selectedFiles.isEmpty)
 
-            Button {
-                viewModel.selectNextFile()
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.bordered)
-            .disabled(!viewModel.hasMultipleSelectedFiles)
-            .help("Следующая SVG-иконка")
-
-            Spacer()
-
-            if viewModel.hasSelectedFiles {
-                Text("Массовое сохранение применит текущие настройки ко всем выбранным файлам.")
+            if viewModel.selectedFiles.isEmpty {
+                Text("Файлы не выбраны")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 4)
+            } else {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(viewModel.selectedFiles.enumerated()), id: \.offset) { index, url in
+                            FileChip(
+                                index: index,
+                                fileName: url.lastPathComponent,
+                                isSelected: index == viewModel.selectedFileIndex
+                            ) {
+                                viewModel.selectFile(at: index)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 2)
+                }
+                .frame(height: 38)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
     }
+}
 
-    private var selectedFileBinding: Binding<Int> {
-        Binding(
-            get: { viewModel.selectedFileIndex },
-            set: { viewModel.selectFile(at: $0) }
-        )
+private struct FileChip: View {
+    let index: Int
+    let fileName: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Text(String(format: "%02d", index + 1))
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(isSelected ? Color.white : Color.secondary)
+
+                Text(fileName)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(width: 176, height: 28, alignment: .leading)
+            .padding(.horizontal, 10)
+            .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.10))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.20), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(fileName)
     }
 }
 

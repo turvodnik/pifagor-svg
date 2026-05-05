@@ -35,20 +35,20 @@ struct SVGPreview: NSViewRepresentable {
               align-items: center;
               justify-content: center;
               overflow: hidden;
-              background-color: #eef1f3;
+              background-color: #fafbfc;
             }
             body::before {
               content: "";
               position: fixed;
               inset: 0;
               background:
-                linear-gradient(45deg, #dfe4e7 25%, transparent 25%),
-                linear-gradient(-45deg, #dfe4e7 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #dfe4e7 75%),
-                linear-gradient(-45deg, transparent 75%, #dfe4e7 75%);
-              background-size: 28px 28px;
-              background-position: 0 0, 0 14px, 14px -14px, -14px 0;
-              opacity: 0.42;
+                linear-gradient(45deg, #9aa4ad 25%, transparent 25%),
+                linear-gradient(-45deg, #9aa4ad 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #9aa4ad 75%),
+                linear-gradient(-45deg, transparent 75%, #9aa4ad 75%);
+              background-size: 64px 64px;
+              background-position: 0 0, 0 32px, 32px -32px, -32px 0;
+              opacity: 0.075;
             }
             .stage {
               width: min(78vw, 180px);
