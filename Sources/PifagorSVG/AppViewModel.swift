@@ -65,6 +65,16 @@ final class AppViewModel: ObservableObject {
         return "\(selectedFileIndex + 1) из \(selectedFiles.count)"
     }
 
+    func clearLoadedIcons() {
+        originalCode = ""
+        optimizedCode = ""
+        compactCode = ""
+        warnings = []
+        selectedFiles = []
+        selectedFileIndex = 0
+        statusText = "Загруженные иконки очищены. Можно выбрать новый набор SVG."
+    }
+
     func optimizeCurrentCode() {
         guard !originalCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             optimizedCode = ""

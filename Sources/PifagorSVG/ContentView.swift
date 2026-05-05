@@ -78,6 +78,11 @@ private struct ToolbarView: View {
                     viewModel.batchOptimizeSelected()
                 }
                 .disabled(viewModel.selectedFiles.isEmpty)
+
+                Button("Очистить") {
+                    viewModel.clearLoadedIcons()
+                }
+                .disabled(!viewModel.hasSelectedFiles && viewModel.originalCode.isEmpty)
             }
 
             HStack(spacing: 14) {
