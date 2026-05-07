@@ -4,6 +4,7 @@ import {
   logoSettings,
   optimizeSvg,
   outputFileName,
+  toInlineHtmlSvg,
   type OptimizationSettings
 } from "./optimizer";
 
@@ -95,6 +96,20 @@ describe("optimizeSvg", () => {
     expect(result.compactSvg).not.toContain("xmlns=");
     expect(result.compactSvg).not.toContain("\n");
     expect(outputFileName("icon.svg", defaultSettings)).toBe("icon-opt.svg");
+  });
+
+  it("creates inline HTML SVG without xmlns while preserving viewBox", () => {
+    const result = toInlineHtmlSvg(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 2h20v20H2z" fill="currentColor"/>
+      </svg>
+    `);
+
+    expect(result).toContain("<svg");
+    expect(result).toContain('viewBox="0 0 24 24"');
+    expect(result).toContain('aria-hidden="true"');
+    expect(result).not.toContain("xmlns=");
+    expect(result).not.toContain("\n");
   });
 
   it("applies fixed sizes with selected units", () => {

@@ -12,6 +12,7 @@ export interface ProcessedFile {
   outputName: string;
   original: string;
   result: OptimizationResult | null;
+  editedSvg?: string;
   error: string | null;
 }
 

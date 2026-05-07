@@ -17,7 +17,16 @@ import {
   Zap
 } from "lucide-react";
 import { copy } from "./i18n";
-import { defaultSettings, optimizeSvg, outputFileName, type ColorMode, type FillColorMode, type OptimizationSettings, type SizeMode } from "./lib/optimizer";
+import {
+  defaultSettings,
+  optimizeSvg,
+  outputFileName,
+  toInlineHtmlSvg,
+  type ColorMode,
+  type FillColorMode,
+  type OptimizationSettings,
+  type SizeMode
+} from "./lib/optimizer";
 import {
   defaultPreviewSettings,
   detectLocale,
@@ -60,18 +69,34 @@ function createPastedResult(svg: string, settings: OptimizationSettings): Proces
 
 function reprocessExistingFile(file: ProcessedFile, settings: OptimizationSettings): ProcessedFile {
   if (!file.original) {
-    return { ...file, outputName: outputFileName(file.name, settings) };
+    return { ...file, outputName: outputFileName(file.name, settings), editedSvg: undefined };
   }
   try {
     const result = optimizeSvg(file.original, settings);
-    return { ...file, outputName: outputFileName(file.name, settings), result, error: null };
+    return { ...file, outputName: outputFileName(file.name, settings), result, editedSvg: undefined, error: null };
   } catch (error) {
     return {
       ...file,
       outputName: outputFileName(file.name, settings),
       result: null,
+      editedSvg: undefined,
       error: error instanceof Error ? error.message : String(error)
     };
+  }
+}
+
+function displaySvg(file: ProcessedFile | null): string {
+  return file?.editedSvg ?? file?.result?.fullSvg ?? "";
+}
+
+function previewSafeSvg(svg: string, settings: OptimizationSettings): string {
+  if (!svg.trim()) {
+    return "";
+  }
+  try {
+    return optimizeSvg(svg, settings).fullSvg;
+  } catch {
+    return "";
   }
 }
 
@@ -170,17 +195,14 @@ export default function App() {
       : undefined
   ) as CSSProperties | undefined;
 
-  const previewSvg = selected?.result?.fullSvg ?? "";
-  const compactSvg = selected?.result?.compactSvg ?? "";
+  const selectedSvg = displaySvg(selected);
+  const previewSvg = previewSafeSvg(selectedSvg, settings);
+  const htmlSvg = selectedSvg ? toInlineHtmlSvg(selectedSvg) : "";
   const sourcePreviewSvg = useMemo(() => {
     if (inputMode === "files") {
-      return selectedFile?.result?.fullSvg ?? "";
+      return previewSafeSvg(selectedFile?.original ?? "", settings);
     }
-    try {
-      return optimizeSvg(pastedSvg, settings).fullSvg;
-    } catch {
-      return "";
-    }
+    return previewSafeSvg(pastedSvg, settings);
   }, [inputMode, pastedSvg, selectedFile, settings]);
 
   const setLocale = (next: Locale) => {
@@ -239,9 +261,30 @@ export default function App() {
     setInputMode("code");
   };
 
+  const updateSelectedSource = (original: string) => {
+    setFiles((current) => current.map((file, index) => (index === selectedIndex ? { ...file, original } : file)));
+  };
+
+  const reoptimizeSelectedSource = () => {
+    if (!selectedFile) {
+      showToast(t.nothingToDownload);
+      return;
+    }
+    const nextFile = reprocessExistingFile(selectedFile, settings);
+    setFiles((current) => current.map((file, index) => (index === selectedIndex ? nextFile : file)));
+  };
+
+  const updateResultSvg = (editedSvg: string) => {
+    if (inputMode === "code") {
+      setCodeResult((current) => (current ? { ...current, editedSvg } : current));
+      return;
+    }
+    setFiles((current) => current.map((file, index) => (index === selectedIndex ? { ...file, editedSvg } : file)));
+  };
+
   const downloadSelected = () => {
-    if (selected?.result?.status === "optimized") {
-      downloadText(selected.outputName, selected.result.fullSvg);
+    if (selected && selectedSvg) {
+      downloadText(selected.outputName, selectedSvg);
       showToast(t.downloadStarted);
       return;
     }
@@ -255,7 +298,7 @@ export default function App() {
       return;
     }
     if (optimized.length === 1) {
-      downloadText(optimized[0].outputName, optimized[0].result!.fullSvg);
+      downloadText(optimized[0].outputName, displaySvg(optimized[0]));
       showToast(t.downloadStarted);
       return;
     }
@@ -264,17 +307,30 @@ export default function App() {
       showToast(t.downloadStarted);
       return;
     }
-    optimized.forEach((file) => downloadText(file.outputName, file.result!.fullSvg));
+    optimized.forEach((file) => downloadText(file.outputName, displaySvg(file)));
     showToast(t.downloadStarted);
   };
 
-  const copyCompact = async () => {
-    if (!compactSvg) {
+  const copySvg = async () => {
+    if (!selectedSvg) {
       showToast(t.nothingToCopy);
       return;
     }
     try {
-      await copyToClipboard(compactSvg);
+      await copyToClipboard(selectedSvg);
+      showToast(t.copied);
+    } catch {
+      showToast(t.copyFailed);
+    }
+  };
+
+  const copyHtmlSvg = async () => {
+    if (!htmlSvg) {
+      showToast(t.nothingToCopy);
+      return;
+    }
+    try {
+      await copyToClipboard(htmlSvg);
       showToast(t.copied);
     } catch {
       showToast(t.copyFailed);
@@ -316,7 +372,7 @@ export default function App() {
     return selected.result?.warnings ?? [];
   }, [selected]);
 
-  const renderPreviewPanel = (showDownloadAll: boolean) => (
+  const renderPreviewPanel = () => (
     <section className={`preview-panel ${inputMode === "code" ? "code-result" : ""}`}>
       <div className="panel-top">
         <div className={previewStageClassName} style={previewStageStyle}>
@@ -330,24 +386,20 @@ export default function App() {
               <ArrowDownToLine size={15} />
               {t.download}
             </button>
-            <button className="ghost-button" type="button" onClick={copyCompact}>
+            <button className="ghost-button" type="button" onClick={copySvg}>
               <Copy size={15} />
               {t.copySvg}
             </button>
-            {showDownloadAll && (
-              <button className="primary-button" type="button" onClick={downloadAll}>
-                <ArrowDownToLine size={15} />
-                {t.downloadAll}
-              </button>
-            )}
+            <button className="ghost-button" type="button" onClick={copyHtmlSvg} title={t.copyHtmlSvg} aria-label={`${t.htmlSvg}: ${t.copyHtmlSvg}`}>
+              <Copy size={15} />
+              {t.htmlSvg}
+            </button>
           </div>
         </div>
       </div>
 
       <div className="code-card">
-        <pre className="code-output" aria-label={t.optimizedCode}>
-          {selected?.result?.fullSvg ?? ""}
-        </pre>
+        <textarea className="code-editor" aria-label={t.optimizedCode} value={selectedSvg} spellCheck={false} onChange={(event) => updateResultSvg(event.target.value)} />
       </div>
 
       {currentWarnings.length > 0 && (
@@ -436,6 +488,10 @@ export default function App() {
                   {t.pickFolder}
                   <input ref={folderInputRef} type="file" accept=".svg,image/svg+xml" multiple onChange={(event) => void handleFiles(event.target.files ?? [])} />
                 </label>
+                <button className="primary-button" type="button" onClick={downloadAll} disabled={files.length === 0}>
+                  <ArrowDownToLine size={15} />
+                  {t.downloadAll}
+                </button>
                 <button className="ghost-button" type="button" onClick={clearFiles} disabled={files.length === 0}>
                   <RefreshCcw size={15} />
                   {t.reset}
@@ -471,12 +527,24 @@ export default function App() {
                 <div className="panel-meta">
                   <p className="section-label">{t.originalCode}</p>
                   <h2>{selectedFile?.name ?? t.sourceCode}</h2>
+                  <div className="toolbar-buttons">
+                    <button className="primary-button" type="button" onClick={reoptimizeSelectedSource} disabled={!selectedFile}>
+                      <Zap size={15} />
+                      {t.optimizePaste}
+                    </button>
+                  </div>
                 </div>
               </div>
-              <textarea id="original-svg" aria-label={t.originalCode} value={selectedFile?.original ?? ""} spellCheck={false} readOnly />
+              <textarea
+                id="original-svg"
+                aria-label={t.originalCode}
+                value={selectedFile?.original ?? ""}
+                spellCheck={false}
+                onChange={(event) => updateSelectedSource(event.target.value)}
+              />
             </section>
 
-            {renderPreviewPanel(true)}
+            {renderPreviewPanel()}
           </section>
         ) : (
           <section className="workspace code-workspace" aria-label="SVG code optimizer workspace">
@@ -499,7 +567,7 @@ export default function App() {
               <textarea id="pasted-svg" aria-label={t.sourceCode} value={pastedSvg} spellCheck={false} onChange={(event) => setPastedSvg(event.target.value)} />
             </section>
 
-            {renderPreviewPanel(false)}
+            {renderPreviewPanel()}
           </section>
         )}
 

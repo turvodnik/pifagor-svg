@@ -1131,16 +1131,30 @@ textarea {
   background: rgba(1, 7, 15, 0.82);
 }
 
-.code-output {
+.code-output,
+.code-editor {
+  width: 100%;
   min-height: 100%;
-  margin: 0;
-  padding: 14px;
   background: transparent;
   color: #b8c8d9;
   font-size: 0.8rem;
   line-height: 1.55;
+}
+
+.code-output {
+  margin: 0;
+  padding: 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.code-editor {
+  display: block;
+  height: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 14px;
+  outline: 0;
 }
 
 .copy-svg-button {

@@ -1,10 +1,23 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { defaultSettings } from "./lib/optimizer";
 import { defaultPreviewSettings, loadSavedSettings, saveSettings } from "./lib/settings";
 
+const originalClipboard = Object.getOwnPropertyDescriptor(Navigator.prototype, "clipboard");
+const originalSecureContext = Object.getOwnPropertyDescriptor(window, "isSecureContext");
+const originalCreateObjectUrl = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
+const originalRevokeObjectUrl = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
+
 describe("App", () => {
+  afterEach(() => {
+    restoreProperty(Navigator.prototype, "clipboard", originalClipboard);
+    restoreProperty(window, "isSecureContext", originalSecureContext);
+    restoreProperty(URL, "createObjectURL", originalCreateObjectUrl);
+    restoreProperty(URL, "revokeObjectURL", originalRevokeObjectUrl);
+    vi.restoreAllMocks();
+  });
+
   it("renders the privacy-first SVG optimizer workspace", () => {
     render(<App />);
 
@@ -75,4 +88,125 @@ describe("App", () => {
     expect(document.querySelector("select")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /currentColor|ZIP|No width/i }).length).toBeGreaterThan(0);
   });
+
+  it("copies manual result edits as regular SVG", async () => {
+    const writeText = mockClipboard();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Optimize$/i }));
+
+    const resultCode = await screen.findByLabelText(/Optimized SVG code/i);
+    const editedSvg = '<svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/></svg>';
+    fireEvent.change(resultCode, { target: { value: editedSvg } });
+    fireEvent.click(screen.getByRole("button", { name: /^Copy SVG$/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(editedSvg));
+  });
+
+  it("copies manual result edits as inline HTML SVG", async () => {
+    const writeText = mockClipboard();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Optimize$/i }));
+
+    const resultCode = await screen.findByLabelText(/Optimized SVG code/i);
+    fireEvent.change(resultCode, {
+      target: {
+        value: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">\n  <path d="M4 4h16v16H4z"/>\n</svg>`
+      }
+    });
+    fireEvent.click(screen.getByRole("button", { name: /HTML SVG/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const copied = writeText.mock.calls.at(-1)?.[0] ?? "";
+    expect(copied).toContain('viewBox="0 0 24 24"');
+    expect(copied).not.toContain("xmlns=");
+    expect(copied).not.toContain("\n");
+  });
+
+  it("downloads the manually edited selected SVG", async () => {
+    const capturedBlobs: Blob[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn((blob: Blob) => {
+        capturedBlobs.push(blob);
+        return "blob:edited-svg";
+      })
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn()
+    });
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Optimize$/i }));
+
+    const resultCode = await screen.findByLabelText(/Optimized SVG code/i);
+    const editedSvg = '<svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/></svg>';
+    fireEvent.change(resultCode, { target: { value: editedSvg } });
+    fireEvent.click(screen.getByRole("button", { name: /^Download$/i }));
+
+    await waitFor(() => expect(capturedBlobs).toHaveLength(1));
+    await expect(readBlobText(capturedBlobs[0])).resolves.toBe(editedSvg);
+  });
+
+  it("re-optimizes edited source file SVG in the current session", async () => {
+    render(<App />);
+
+    const fileInput = document.querySelector("input[type='file']") as HTMLInputElement;
+    const original = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 1h22v22H1z" fill="#000"/></svg>`;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File([original], "icon.svg", { type: "image/svg+xml" })]
+      }
+    });
+
+    const sourceCode = await screen.findByLabelText(/Original SVG code/i);
+    await waitFor(() => expect((sourceCode as HTMLTextAreaElement).value).toContain("M1 1h22v22H1z"));
+    fireEvent.change(sourceCode, {
+      target: {
+        value: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 2h20v20H2z" fill="#000"/></svg>`
+      }
+    });
+
+    const sourcePanel = document.querySelector(".source-panel") as HTMLElement;
+    fireEvent.click(within(sourcePanel).getByRole("button", { name: /^Optimize$/i }));
+
+    await waitFor(() => expect((screen.getByLabelText(/Optimized SVG code/i) as HTMLTextAreaElement).value).toContain("M2 2h20v20H2z"));
+  });
 });
+
+function mockClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(Navigator.prototype, "clipboard", {
+    configurable: true,
+    value: { writeText }
+  });
+  Object.defineProperty(window, "isSecureContext", {
+    configurable: true,
+    value: true
+  });
+  return writeText;
+}
+
+function restoreProperty(target: object, key: PropertyKey, descriptor: PropertyDescriptor | undefined): void {
+  if (descriptor) {
+    Object.defineProperty(target, key, descriptor);
+    return;
+  }
+
+  delete (target as Record<PropertyKey, unknown>)[key];
+}
+
+function readBlobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read blob."));
+    reader.readAsText(blob);
+  });
+}

@@ -58,6 +58,8 @@ export interface Copy {
   downloadAllHint: string;
   copyCompact: string;
   copySvg: string;
+  htmlSvg: string;
+  copyHtmlSvg: string;
   emptyState: string;
   copied: string;
   copyFailed: string;
@@ -129,6 +131,8 @@ export const copy: Record<Locale, Copy> = {
     downloadAllHint: "ZIP or separate files",
     copyCompact: "Copy compact",
     copySvg: "Copy SVG",
+    htmlSvg: "HTML SVG",
+    copyHtmlSvg: "Copy inline SVG for HTML",
     emptyState: "Optimized SVG will appear here.",
     copied: "SVG copied",
     copyFailed: "Could not copy SVG",
@@ -198,6 +202,8 @@ export const copy: Record<Locale, Copy> = {
     downloadAllHint: "ZIP или отдельные файлы",
     copyCompact: "Копировать компактный",
     copySvg: "Копировать SVG",
+    htmlSvg: "HTML SVG",
+    copyHtmlSvg: "Копировать inline SVG для HTML",
     emptyState: "Оптимизированный SVG появится здесь.",
     copied: "SVG скопирован",
     copyFailed: "Не удалось скопировать SVG",
@@ -267,6 +273,8 @@ export const copy: Record<Locale, Copy> = {
     downloadAllHint: "ZIP або окремі файли",
     copyCompact: "Копіювати компактний",
     copySvg: "Копіювати SVG",
+    htmlSvg: "HTML SVG",
+    copyHtmlSvg: "Копіювати inline SVG для HTML",
     emptyState: "Оптимізований SVG з'явиться тут.",
     copied: "SVG скопійовано",
     copyFailed: "Не вдалося скопіювати SVG",
@@ -336,6 +344,8 @@ export const copy: Record<Locale, Copy> = {
     downloadAllHint: "ZIP o archivos separados",
     copyCompact: "Copiar compacto",
     copySvg: "Copiar SVG",
+    htmlSvg: "HTML SVG",
+    copyHtmlSvg: "Copiar SVG inline para HTML",
     emptyState: "El SVG optimizado aparecerá aquí.",
     copied: "SVG copiado",
     copyFailed: "No se pudo copiar el SVG",
@@ -405,6 +415,8 @@ export const copy: Record<Locale, Copy> = {
     downloadAllHint: "ZIP oder einzelne Dateien",
     copyCompact: "Kompakt kopieren",
     copySvg: "SVG kopieren",
+    htmlSvg: "HTML SVG",
+    copyHtmlSvg: "Inline-SVG für HTML kopieren",
     emptyState: "Das optimierte SVG erscheint hier.",
     copied: "SVG kopiert",
     copyFailed: "SVG konnte nicht kopiert werden",

@@ -46,7 +46,7 @@ export function downloadZip(fileName: string, files: ProcessedFile[]): void {
   const entries = Object.fromEntries(
     files
       .filter((file) => file.result?.status === "optimized")
-      .map((file) => [file.outputName, strToU8(file.result!.fullSvg)])
+      .map((file) => [file.outputName, strToU8(file.editedSvg ?? file.result!.fullSvg)])
   );
   const bytes = zipSync(entries, { level: 6 });
   downloadBlob(fileName, new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));

@@ -221,6 +221,10 @@ export function outputFileName(fileName: string, settings: OptimizationSettings)
   return `${cleanPrefix}${baseName}${cleanSuffix}.${extension || "svg"}`;
 }
 
+export function toInlineHtmlSvg(svg: string): string {
+  return compact(svg);
+}
+
 function convertInlineStyles(element: Element, warnings: string[]): void {
   const style = element.getAttribute("style");
   if (style) {
