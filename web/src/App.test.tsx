@@ -89,6 +89,49 @@ describe("App", () => {
     expect(screen.getAllByRole("button", { name: /currentColor|ZIP|No width/i }).length).toBeGreaterThan(0);
   });
 
+  it("keeps source previews visually original when optimization preset changes paint", async () => {
+    saveSettings({
+      locale: "en",
+      settings: { ...defaultSettings, fillColorMode: "custom", fillColor: "#d10000" },
+      preview: defaultPreviewSettings
+    });
+    render(<App />);
+
+    const fileInput = document.querySelector("input[type='file']") as HTMLInputElement;
+    const original = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 1h22v22H1z" fill="#000000"/></svg>`;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File([original], "icon.svg", { type: "image/svg+xml" })]
+      }
+    });
+
+    await screen.findByLabelText(/Original SVG code/i);
+    await waitFor(() => expect(document.querySelector(".source-panel .svg-preview svg")).toBeInTheDocument());
+
+    expect(document.querySelector(".source-panel .svg-preview svg")?.outerHTML).toContain('fill="#000000"');
+    expect(document.querySelector(".preview-panel .svg-preview svg")?.outerHTML).toContain('fill="#d10000"');
+  });
+
+  it("shows source and result SVG sizes without re-reading files", async () => {
+    render(<App />);
+
+    const fileInput = document.querySelector("input[type='file']") as HTMLInputElement;
+    const original = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 2h20v20H2z"/></svg>`;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File([original], "size.svg", { type: "image/svg+xml" })]
+      }
+    });
+
+    await screen.findByLabelText(/Original SVG code/i);
+
+    await waitFor(() => {
+      expect(document.querySelector(".file-pill-size")).toHaveTextContent(/\d+ B/);
+      expect(document.querySelector(".source-panel .panel-meta h2")).toHaveTextContent(/size\.svg\s+\(\d+ B\)/);
+      expect(document.querySelector(".preview-panel .panel-meta h2")).toHaveTextContent(/size-opt\.svg\s+\(\d+ B\)/);
+    });
+  });
+
   it("copies manual result edits as regular SVG", async () => {
     const writeText = mockClipboard();
     render(<App />);

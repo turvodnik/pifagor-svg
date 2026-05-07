@@ -21,6 +21,7 @@ import {
   defaultSettings,
   optimizeSvg,
   outputFileName,
+  sanitizeSvgForPreview,
   toInlineHtmlSvg,
   type ColorMode,
   type FillColorMode,
@@ -55,12 +56,23 @@ function createPastedResult(svg: string, settings: OptimizationSettings): Proces
   const name = "pasted.svg";
   try {
     const result = optimizeSvg(svg, settings);
-    return { name, outputName: outputFileName(name, settings), original: svg, result, error: null };
+    return {
+      name,
+      outputName: outputFileName(name, settings),
+      original: svg,
+      originalSizeBytes: byteSize(svg),
+      originalPreviewSvg: previewOriginalSvg(svg),
+      result,
+      resultSizeBytes: byteSize(result.fullSvg),
+      error: null
+    };
   } catch (error) {
     return {
       name,
       outputName: outputFileName(name, settings),
       original: svg,
+      originalSizeBytes: byteSize(svg),
+      originalPreviewSvg: previewOriginalSvg(svg),
       result: null,
       error: error instanceof Error ? error.message : String(error)
     };
@@ -69,16 +81,28 @@ function createPastedResult(svg: string, settings: OptimizationSettings): Proces
 
 function reprocessExistingFile(file: ProcessedFile, settings: OptimizationSettings): ProcessedFile {
   if (!file.original) {
-    return { ...file, outputName: outputFileName(file.name, settings), editedSvg: undefined };
+    return { ...file, outputName: outputFileName(file.name, settings), resultSizeBytes: undefined, editedSvg: undefined };
   }
   try {
     const result = optimizeSvg(file.original, settings);
-    return { ...file, outputName: outputFileName(file.name, settings), result, editedSvg: undefined, error: null };
+    return {
+      ...file,
+      outputName: outputFileName(file.name, settings),
+      originalSizeBytes: byteSize(file.original),
+      originalPreviewSvg: previewOriginalSvg(file.original),
+      result,
+      resultSizeBytes: byteSize(result.fullSvg),
+      editedSvg: undefined,
+      error: null
+    };
   } catch (error) {
     return {
       ...file,
       outputName: outputFileName(file.name, settings),
+      originalSizeBytes: byteSize(file.original),
+      originalPreviewSvg: previewOriginalSvg(file.original),
       result: null,
+      resultSizeBytes: undefined,
       editedSvg: undefined,
       error: error instanceof Error ? error.message : String(error)
     };
@@ -98,6 +122,42 @@ function previewSafeSvg(svg: string, settings: OptimizationSettings): string {
   } catch {
     return "";
   }
+}
+
+function previewOriginalSvg(svg: string): string {
+  if (!svg.trim()) {
+    return "";
+  }
+  try {
+    return sanitizeSvgForPreview(svg);
+  } catch {
+    return "";
+  }
+}
+
+function byteSize(value: string): number {
+  return new Blob([value]).size;
+}
+
+function formatByteSize(bytes: number | undefined): string {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes)) {
+    return "";
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kilobytes = bytes / 1024;
+  return `${kilobytes < 10 ? kilobytes.toFixed(1) : Math.round(kilobytes)} KB`;
+}
+
+function resultByteSize(file: ProcessedFile | null): number | undefined {
+  if (!file) {
+    return undefined;
+  }
+  if (file.editedSvg !== undefined) {
+    return byteSize(file.editedSvg);
+  }
+  return file.resultSizeBytes ?? (file.result ? byteSize(file.result.fullSvg) : undefined);
 }
 
 function settingsAreDefault(settings: OptimizationSettings): boolean {
@@ -198,12 +258,14 @@ export default function App() {
   const selectedSvg = displaySvg(selected);
   const previewSvg = previewSafeSvg(selectedSvg, settings);
   const htmlSvg = selectedSvg ? toInlineHtmlSvg(selectedSvg) : "";
+  const selectedResultSize = formatByteSize(resultByteSize(selected));
+  const selectedSourceSize = formatByteSize(inputMode === "files" ? selectedFile?.originalSizeBytes : byteSize(pastedSvg));
   const sourcePreviewSvg = useMemo(() => {
     if (inputMode === "files") {
-      return previewSafeSvg(selectedFile?.original ?? "", settings);
+      return selectedFile?.originalPreviewSvg ?? previewOriginalSvg(selectedFile?.original ?? "");
     }
-    return previewSafeSvg(pastedSvg, settings);
-  }, [inputMode, pastedSvg, selectedFile, settings]);
+    return previewOriginalSvg(pastedSvg);
+  }, [inputMode, pastedSvg, selectedFile]);
 
   const setLocale = (next: Locale) => {
     setLocaleState(next);
@@ -262,7 +324,18 @@ export default function App() {
   };
 
   const updateSelectedSource = (original: string) => {
-    setFiles((current) => current.map((file, index) => (index === selectedIndex ? { ...file, original } : file)));
+    setFiles((current) =>
+      current.map((file, index) =>
+        index === selectedIndex
+          ? {
+              ...file,
+              original,
+              originalSizeBytes: byteSize(original),
+              originalPreviewSvg: previewOriginalSvg(original)
+            }
+          : file
+      )
+    );
   };
 
   const reoptimizeSelectedSource = () => {
@@ -276,10 +349,10 @@ export default function App() {
 
   const updateResultSvg = (editedSvg: string) => {
     if (inputMode === "code") {
-      setCodeResult((current) => (current ? { ...current, editedSvg } : current));
+      setCodeResult((current) => (current ? { ...current, editedSvg, resultSizeBytes: byteSize(editedSvg) } : current));
       return;
     }
-    setFiles((current) => current.map((file, index) => (index === selectedIndex ? { ...file, editedSvg } : file)));
+    setFiles((current) => current.map((file, index) => (index === selectedIndex ? { ...file, editedSvg, resultSizeBytes: byteSize(editedSvg) } : file)));
   };
 
   const downloadSelected = () => {
@@ -380,7 +453,10 @@ export default function App() {
         </div>
         <div className="panel-meta">
           <p className="section-label">{t.result}</p>
-          <h2>{selected?.outputName ?? t.optimizedCode}</h2>
+          <h2>
+            {selected?.outputName ?? t.optimizedCode}
+            {selectedResultSize && <> <span className="size-label">({selectedResultSize})</span></>}
+          </h2>
           <div className="toolbar-buttons">
             <button className="primary-button" type="button" onClick={downloadSelected}>
               <ArrowDownToLine size={15} />
@@ -499,22 +575,28 @@ export default function App() {
               </div>
               {files.length > 0 && (
                 <div className="file-rail" aria-label={t.files}>
-                  {files.map((file, index) => (
-                    <button
-                      key={`${file.name}-${index}`}
-                      className={index === selectedIndex ? "is-selected" : ""}
-                      type="button"
-                      onClick={() => {
-                        setSelectedIndex(index);
-                        setInputMode("files");
-                      }}
-                    >
-                      <span className="file-pill-thumb" aria-hidden="true">
-                        {file.result?.fullSvg ? <span dangerouslySetInnerHTML={{ __html: file.result.fullSvg }} /> : <Files size={14} />}
-                      </span>
-                      <span className="file-pill-name">{file.name}</span>
-                    </button>
-                  ))}
+                  {files.map((file, index) => {
+                    const fileSize = formatByteSize(file.originalSizeBytes);
+                    return (
+                      <button
+                        key={`${file.name}-${index}`}
+                        className={index === selectedIndex ? "is-selected" : ""}
+                        type="button"
+                        onClick={() => {
+                          setSelectedIndex(index);
+                          setInputMode("files");
+                        }}
+                      >
+                        <span className={`file-pill-thumb preview-bg-${previewSettings.backgroundMode}`} style={previewStageStyle} aria-hidden="true">
+                          {file.originalPreviewSvg ? <span dangerouslySetInnerHTML={{ __html: file.originalPreviewSvg }} /> : <Files size={14} />}
+                        </span>
+                        <span className="file-pill-copy">
+                          <span className="file-pill-name">{file.name}</span>
+                          {fileSize && <span className="file-pill-size">{fileSize}</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -526,7 +608,10 @@ export default function App() {
                 </div>
                 <div className="panel-meta">
                   <p className="section-label">{t.originalCode}</p>
-                  <h2>{selectedFile?.name ?? t.sourceCode}</h2>
+                  <h2>
+                    {selectedFile?.name ?? t.sourceCode}
+                    {selectedSourceSize && <> <span className="size-label">({selectedSourceSize})</span></>}
+                  </h2>
                   <div className="toolbar-buttons">
                     <button className="primary-button" type="button" onClick={reoptimizeSelectedSource} disabled={!selectedFile}>
                       <Zap size={15} />
@@ -555,7 +640,10 @@ export default function App() {
                 </div>
                 <div className="panel-meta">
                   <p className="section-label">{t.originalCode}</p>
-                  <h2>{t.sourceCode}</h2>
+                  <h2>
+                    {t.sourceCode}
+                    {selectedSourceSize && <> <span className="size-label">({selectedSourceSize})</span></>}
+                  </h2>
                   <div className="toolbar-buttons">
                     <button className="primary-button" type="button" onClick={handlePasteOptimize}>
                       <Zap size={15} />

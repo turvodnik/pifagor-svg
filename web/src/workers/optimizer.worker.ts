@@ -1,4 +1,4 @@
-import { optimizeSvg, outputFileName, type OptimizationSettings, type OptimizationResult } from "../lib/optimizer";
+import { optimizeSvg, outputFileName, sanitizeSvgForPreview, type OptimizationSettings, type OptimizationResult } from "../lib/optimizer";
 import { readBlobText } from "../lib/browser";
 
 export interface WorkerRequest {
@@ -11,7 +11,10 @@ export interface ProcessedFile {
   name: string;
   outputName: string;
   original: string;
+  originalSizeBytes: number;
+  originalPreviewSvg: string;
   result: OptimizationResult | null;
+  resultSizeBytes?: number;
   editedSvg?: string;
   error: string | null;
 }
@@ -33,7 +36,10 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         name: file.name,
         outputName: outputFileName(file.name, settings),
         original,
+        originalSizeBytes: file.size,
+        originalPreviewSvg: sanitizeSvgForPreview(original),
         result,
+        resultSizeBytes: new Blob([result.fullSvg]).size,
         error: null
       });
     } catch (error) {
@@ -41,6 +47,8 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         name: file.name,
         outputName: outputFileName(file.name, settings),
         original: "",
+        originalSizeBytes: file.size,
+        originalPreviewSvg: "",
         result: null,
         error: error instanceof Error ? error.message : String(error)
       });

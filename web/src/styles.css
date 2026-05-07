@@ -364,6 +364,8 @@ p {
 }
 
 .file-pill-thumb {
+  --preview-bg: #07111c;
+  --preview-grid-line: rgba(185, 195, 207, 0.13);
   display: grid;
   width: 28px;
   height: 28px;
@@ -372,9 +374,9 @@ p {
   border: 1px solid rgba(211, 222, 235, 0.12);
   border-radius: 999px;
   background:
-    linear-gradient(rgba(185, 195, 207, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(185, 195, 207, 0.12) 1px, transparent 1px),
-    rgba(1, 7, 15, 0.56);
+    linear-gradient(var(--preview-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--preview-grid-line) 1px, transparent 1px),
+    var(--preview-bg);
   background-size: 50% 50%;
   overflow: hidden;
 }
@@ -395,6 +397,18 @@ p {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-pill-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.file-pill-size {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1;
 }
 
 .file-rail button.is-selected {
@@ -600,6 +614,15 @@ textarea {
   text-overflow: ellipsis;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.size-label {
+  display: inline-block;
+  margin-left: 0.35em;
+  color: var(--muted);
+  font-size: 0.78em;
+  font-weight: 450;
+  white-space: nowrap;
 }
 
 .panel-meta .toolbar-buttons {

@@ -225,6 +225,22 @@ export function toInlineHtmlSvg(svg: string): string {
   return compact(svg);
 }
 
+export function sanitizeSvgForPreview(svg: string): string {
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const parserError = document.querySelector("parsererror");
+  if (parserError) {
+    throw new Error(`Invalid SVG/XML: ${parserError.textContent?.trim() ?? "parser error"}`);
+  }
+
+  const root = document.documentElement;
+  if (!root || normalizedName(root) !== "svg") {
+    throw new Error("Missing root <svg> element.");
+  }
+
+  sanitizeDangerousContent(root, []);
+  return serialize(root);
+}
+
 function convertInlineStyles(element: Element, warnings: string[]): void {
   const style = element.getAttribute("style");
   if (style) {

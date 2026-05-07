@@ -1,6 +1,6 @@
 import { zipSync, strToU8 } from "fflate";
 import type { ProcessedFile } from "../workers/optimizer.worker";
-import { optimizeSvg, outputFileName, type OptimizationSettings } from "./optimizer";
+import { optimizeSvg, outputFileName, sanitizeSvgForPreview, type OptimizationSettings } from "./optimizer";
 
 export type BatchOutputMode = "zip" | "separate";
 
@@ -18,7 +18,10 @@ export async function processFilesOnMainThread(files: File[], settings: Optimiza
         name: file.name,
         outputName: outputFileName(file.name, settings),
         original,
+        originalSizeBytes: file.size,
+        originalPreviewSvg: sanitizeSvgForPreview(original),
         result,
+        resultSizeBytes: new Blob([result.fullSvg]).size,
         error: null
       });
     } catch (error) {
@@ -26,6 +29,8 @@ export async function processFilesOnMainThread(files: File[], settings: Optimiza
         name: file.name,
         outputName: outputFileName(file.name, settings),
         original: "",
+        originalSizeBytes: file.size,
+        originalPreviewSvg: "",
         result: null,
         error: error instanceof Error ? error.message : String(error)
       });
