@@ -10,8 +10,6 @@ import {
   Globe2,
   Heart,
   LockKeyhole,
-  Maximize2,
-  Minimize2,
   SlidersHorizontal,
   X,
   RefreshCcw,
@@ -195,7 +193,6 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [outputMode, setOutputMode] = useState<BatchOutputMode>("zip");
   const [toast, setToast] = useState<string | null>(null);
-  const [expandedEditors, setExpandedEditors] = useState({ source: false, result: false });
   const folderInputRef = useRef<HTMLInputElement>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const t = copy[locale];
@@ -463,10 +460,6 @@ export default function App() {
     commitPreset({ ...settings, prettyMarkup: !settings.prettyMarkup }, previewSettings);
   };
 
-  const toggleEditorExpansion = (target: "source" | "result") => {
-    setExpandedEditors((current) => ({ ...current, [target]: !current[target] }));
-  };
-
   const currentWarnings = useMemo(() => {
     if (!selected) {
       return [];
@@ -478,7 +471,7 @@ export default function App() {
   }, [selected]);
 
   const renderPreviewPanel = () => (
-    <section className={`preview-panel ${inputMode === "code" ? "code-result" : ""} ${expandedEditors.result ? "is-editor-expanded" : ""}`}>
+    <section className={`preview-panel ${inputMode === "code" ? "code-result" : ""}`}>
       <div className="panel-top">
         <div className={previewStageClassName} style={previewStageStyle}>
           {previewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: previewSvg }} /> : null}
@@ -511,15 +504,6 @@ export default function App() {
             <button className="ghost-button" type="button" onClick={copyHtmlSvg} title={t.copyHtmlSvg} aria-label={`${t.htmlSvg}: ${t.copyHtmlSvg}`}>
               <Copy size={15} />
               {t.htmlSvg}
-            </button>
-            <button
-              className="ghost-button icon-only"
-              type="button"
-              onClick={() => toggleEditorExpansion("result")}
-              title={expandedEditors.result ? t.collapseEditor : t.expandEditor}
-              aria-label={expandedEditors.result ? t.collapseEditor : t.expandEditor}
-            >
-              {expandedEditors.result ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </button>
           </div>
         </div>
@@ -646,7 +630,7 @@ export default function App() {
               )}
             </div>
 
-            <section className={`paste-panel source-panel ${expandedEditors.source ? "is-editor-expanded" : ""}`}>
+            <section className="paste-panel source-panel">
               <div className="panel-top">
                 <div className={previewStageClassName} style={previewStageStyle}>
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
@@ -662,15 +646,6 @@ export default function App() {
                       <Zap size={15} />
                       {t.optimizePaste}
                     </button>
-                    <button
-                      className="ghost-button icon-only"
-                      type="button"
-                      onClick={() => toggleEditorExpansion("source")}
-                      title={expandedEditors.source ? t.collapseEditor : t.expandEditor}
-                      aria-label={expandedEditors.source ? t.collapseEditor : t.expandEditor}
-                    >
-                      {expandedEditors.source ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                    </button>
                   </div>
                 </div>
               </div>
@@ -681,7 +656,7 @@ export default function App() {
           </section>
         ) : (
           <section className="workspace code-workspace" aria-label="SVG code optimizer workspace">
-            <section className={`paste-panel code-source ${expandedEditors.source ? "is-editor-expanded" : ""}`}>
+            <section className="paste-panel code-source">
               <div className="panel-top">
                 <div className={previewStageClassName} style={previewStageStyle}>
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
@@ -696,15 +671,6 @@ export default function App() {
                     <button className="primary-button" type="button" onClick={handlePasteOptimize}>
                       <Zap size={15} />
                       {t.optimizePaste}
-                    </button>
-                    <button
-                      className="ghost-button icon-only"
-                      type="button"
-                      onClick={() => toggleEditorExpansion("source")}
-                      title={expandedEditors.source ? t.collapseEditor : t.expandEditor}
-                      aria-label={expandedEditors.source ? t.collapseEditor : t.expandEditor}
-                    >
-                      {expandedEditors.source ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                     </button>
                   </div>
                 </div>

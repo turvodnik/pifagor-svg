@@ -78,8 +78,23 @@ describe("App", () => {
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
     expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*height:\s*clamp\(/s);
+    expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*flex:\s*0\s+0\s+auto;/s);
+    expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*overflow:\s*hidden;/s);
     expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*resize:\s*vertical;/s);
-    expect(styles).toMatch(/\.is-editor-expanded\s+\.svg-code-editor\s*{[^}]*height:\s*calc\(100svh/s);
+    expect(styles).toMatch(/\.svg-code-editor\s*>\s*div\s*{[^}]*overflow:\s*hidden;/s);
+    expect(styles).toMatch(/\.svg-code-editor\s+\.cm-editor\s*{[^}]*max-height:\s*100%;[^}]*overflow:\s*hidden;/s);
+    expect(styles).toMatch(/\.svg-code-editor\s+\.cm-scroller\s*{[^}]*height:\s*100%;[^}]*max-height:\s*100%;[^}]*overflow:\s*auto;/s);
+    expect(styles).toMatch(/\.svg-code-editor\s+\.cm-scroller\s*{[^}]*overflow:\s*auto;/s);
+    expect(styles).not.toMatch(/\.is-editor-expanded/);
+    expect(styles).not.toMatch(/icon-only/);
+  });
+
+  it("does not render expand editor controls", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+
+    expect(screen.queryByRole("button", { name: /Expand code editor|Collapse code editor/i })).not.toBeInTheDocument();
   });
 
   it("applies reset defaults to the active preset immediately", () => {

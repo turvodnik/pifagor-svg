@@ -27,8 +27,6 @@ export interface Copy {
   customPreset: string;
   prettyMarkup: string;
   prettyMarkupHint: string;
-  expandEditor: string;
-  collapseEditor: string;
   profile: string;
   profileAuto: string;
   profileIcon: string;
@@ -117,8 +115,6 @@ export const copy: Record<Locale, Copy> = {
     customPreset: "Custom preset active",
     prettyMarkup: "Pretty markup",
     prettyMarkupHint: "Format regular SVG output with line breaks and indentation.",
-    expandEditor: "Expand code editor",
-    collapseEditor: "Collapse code editor",
     profile: "Profile",
     profileAuto: "Auto",
     profileIcon: "Icon",
@@ -205,8 +201,6 @@ export const copy: Record<Locale, Copy> = {
     customPreset: "Измененный пресет активен",
     prettyMarkup: "Читаемый код",
     prettyMarkupHint: "Форматировать обычный SVG с переносами и отступами.",
-    expandEditor: "Развернуть редактор кода",
-    collapseEditor: "Свернуть редактор кода",
     profile: "Профиль",
     profileAuto: "Авто",
     profileIcon: "Иконка",
@@ -293,8 +287,6 @@ export const copy: Record<Locale, Copy> = {
     customPreset: "Змінений пресет активний",
     prettyMarkup: "Читабельний код",
     prettyMarkupHint: "Форматувати звичайний SVG з переносами та відступами.",
-    expandEditor: "Розгорнути редактор коду",
-    collapseEditor: "Згорнути редактор коду",
     profile: "Профіль",
     profileAuto: "Авто",
     profileIcon: "Іконка",
@@ -381,8 +373,6 @@ export const copy: Record<Locale, Copy> = {
     customPreset: "Preset personalizado activo",
     prettyMarkup: "Código legible",
     prettyMarkupHint: "Formatea el SVG normal con saltos de línea e indentación.",
-    expandEditor: "Expandir editor de código",
-    collapseEditor: "Contraer editor de código",
     profile: "Perfil",
     profileAuto: "Auto",
     profileIcon: "Icono",
@@ -469,8 +459,6 @@ export const copy: Record<Locale, Copy> = {
     customPreset: "Eigenes Preset aktiv",
     prettyMarkup: "Lesbarer Code",
     prettyMarkupHint: "Formatiert normales SVG mit Zeilenumbrüchen und Einzügen.",
-    expandEditor: "Code-Editor erweitern",
-    collapseEditor: "Code-Editor verkleinern",
     profile: "Profil",
     profileAuto: "Auto",
     profileIcon: "Icon",

@@ -495,11 +495,6 @@ p {
   background: rgba(0, 135, 199, 0.16);
 }
 
-.icon-only {
-  width: 34px;
-  padding-inline: 0;
-}
-
 .compact-button {
   min-height: 36px;
   border-radius: 999px;
@@ -582,11 +577,11 @@ textarea {
 
 .svg-code-editor {
   position: relative;
-  flex: 1;
-  height: clamp(320px, 42vh, 520px);
+  flex: 0 0 auto;
+  height: clamp(320px, 52svh, 620px);
   min-height: 260px;
-  max-height: none;
-  overflow: auto;
+  max-height: calc(100svh - 220px);
+  overflow: hidden;
   resize: vertical;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -594,36 +589,35 @@ textarea {
 }
 
 .code-source .svg-code-editor {
-  height: clamp(340px, 44vh, 560px);
+  height: clamp(340px, 56svh, 680px);
 }
 
 .source-panel .svg-code-editor {
-  height: clamp(340px, 44vh, 560px);
+  height: clamp(340px, 56svh, 680px);
 }
 
 .code-card .svg-code-editor {
   width: 100%;
   height: 100%;
-  min-height: 100%;
+  min-height: 0;
+  max-height: none;
   resize: none;
   border: 0;
   border-radius: 14px;
   background: transparent;
 }
 
-.is-editor-expanded .svg-code-editor {
-  height: calc(100svh - 300px);
-  min-height: min(680px, calc(100svh - 220px));
-}
-
-.is-editor-expanded .code-card {
-  height: calc(100svh - 300px);
-  min-height: min(680px, calc(100svh - 220px));
+.svg-code-editor > div {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .svg-code-editor .cm-editor {
   height: 100%;
-  min-height: inherit;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
   background: transparent;
   color: #c4d2e1;
   font-family: "SFMono-Regular", Consolas, ui-monospace, monospace;
@@ -632,6 +626,8 @@ textarea {
 }
 
 .svg-code-editor .cm-scroller {
+  height: 100%;
+  max-height: 100%;
   font-family: inherit;
   overflow: auto;
 }
@@ -1297,10 +1293,11 @@ textarea {
 .code-card {
   position: relative;
   display: flex;
-  flex: 1;
-  min-height: clamp(420px, 50vh, 720px);
-  max-height: none;
-  overflow: auto;
+  flex: 0 0 auto;
+  height: clamp(340px, 56svh, 680px);
+  min-height: 260px;
+  max-height: calc(100svh - 220px);
+  overflow: hidden;
   resize: vertical;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1377,11 +1374,6 @@ textarea {
 .result-body > .preview-stage,
 .source-body > .preview-stage {
   align-self: start;
-}
-
-.source-body textarea,
-.result-body .code-card {
-  height: 100%;
 }
 
 .code-result .result-body {
@@ -1636,10 +1628,6 @@ footer a {
   .source-panel .svg-code-editor {
     height: 300px;
     min-height: 260px;
-  }
-
-  .toolbar-buttons .icon-only {
-    width: 38px;
   }
 
   .panel-top {
