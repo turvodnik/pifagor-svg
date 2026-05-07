@@ -3,6 +3,7 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://svg.pifagorstudio.com/</loc>
+    <lastmod>2026-05-07</lastmod>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
     <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
@@ -10,9 +11,54 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
   </url>
-  <url><loc>https://svg.pifagorstudio.com/en/</loc></url>
-  <url><loc>https://svg.pifagorstudio.com/ru/</loc></url>
-  <url><loc>https://svg.pifagorstudio.com/uk/</loc></url>
-  <url><loc>https://svg.pifagorstudio.com/es/</loc></url>
-  <url><loc>https://svg.pifagorstudio.com/de/</loc></url>
+  <url>
+    <loc>https://svg.pifagorstudio.com/en/</loc>
+    <lastmod>2026-05-07</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://svg.pifagorstudio.com/uk/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
+  </url>
+  <url>
+    <loc>https://svg.pifagorstudio.com/ru/</loc>
+    <lastmod>2026-05-07</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://svg.pifagorstudio.com/uk/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
+  </url>
+  <url>
+    <loc>https://svg.pifagorstudio.com/uk/</loc>
+    <lastmod>2026-05-07</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://svg.pifagorstudio.com/uk/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
+  </url>
+  <url>
+    <loc>https://svg.pifagorstudio.com/es/</loc>
+    <lastmod>2026-05-07</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://svg.pifagorstudio.com/uk/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
+  </url>
+  <url>
+    <loc>https://svg.pifagorstudio.com/de/</loc>
+    <lastmod>2026-05-07</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://svg.pifagorstudio.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://svg.pifagorstudio.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://svg.pifagorstudio.com/ru/"/>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://svg.pifagorstudio.com/uk/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://svg.pifagorstudio.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://svg.pifagorstudio.com/de/"/>
+  </url>
 </urlset>
