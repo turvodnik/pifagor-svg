@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -44,6 +46,14 @@ describe("App", () => {
     expect(screen.getByText(/Logo optimization/i)).toBeInTheDocument();
     expect(screen.queryByText(/Contrast grid/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Transparent grid/i)).not.toBeInTheDocument();
+  });
+
+  it("forces preview SVGs to ignore intrinsic width and height attributes", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(styles).toMatch(
+      /\.svg-preview svg\s*{[^}]*\n\s*width:\s*100%;[^}]*\n\s*height:\s*100%;/s
+    );
   });
 
   it("applies reset defaults to the active preset immediately", () => {

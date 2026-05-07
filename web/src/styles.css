@@ -985,8 +985,9 @@ textarea {
 }
 
 .file-thumb svg {
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .file-copy {
@@ -1114,8 +1115,12 @@ textarea {
 }
 
 .svg-preview svg {
+  display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
+  overflow: visible;
 }
 
 .warnings {
