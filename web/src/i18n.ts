@@ -26,7 +26,6 @@ export interface Copy {
   applySettings: string;
   customPreset: string;
   prettyMarkup: string;
-  prettyMarkupHint: string;
   profile: string;
   profileAuto: string;
   profileIcon: string;
@@ -114,7 +113,6 @@ export const copy: Record<Locale, Copy> = {
     applySettings: "Apply",
     customPreset: "Custom preset active",
     prettyMarkup: "Pretty markup",
-    prettyMarkupHint: "Format regular SVG output with line breaks and indentation.",
     profile: "Profile",
     profileAuto: "Auto",
     profileIcon: "Icon",
@@ -200,7 +198,6 @@ export const copy: Record<Locale, Copy> = {
     applySettings: "Применить",
     customPreset: "Измененный пресет активен",
     prettyMarkup: "Читаемый код",
-    prettyMarkupHint: "Форматировать обычный SVG с переносами и отступами.",
     profile: "Профиль",
     profileAuto: "Авто",
     profileIcon: "Иконка",
@@ -286,7 +283,6 @@ export const copy: Record<Locale, Copy> = {
     applySettings: "Застосувати",
     customPreset: "Змінений пресет активний",
     prettyMarkup: "Читабельний код",
-    prettyMarkupHint: "Форматувати звичайний SVG з переносами та відступами.",
     profile: "Профіль",
     profileAuto: "Авто",
     profileIcon: "Іконка",
@@ -372,7 +368,6 @@ export const copy: Record<Locale, Copy> = {
     applySettings: "Aplicar",
     customPreset: "Preset personalizado activo",
     prettyMarkup: "Código legible",
-    prettyMarkupHint: "Formatea el SVG normal con saltos de línea e indentación.",
     profile: "Perfil",
     profileAuto: "Auto",
     profileIcon: "Icono",
@@ -458,7 +453,6 @@ export const copy: Record<Locale, Copy> = {
     applySettings: "Anwenden",
     customPreset: "Eigenes Preset aktiv",
     prettyMarkup: "Lesbarer Code",
-    prettyMarkupHint: "Formatiert normales SVG mit Zeilenumbrüchen und Einzügen.",
     profile: "Profil",
     profileAuto: "Auto",
     profileIcon: "Icon",

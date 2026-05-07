@@ -34,8 +34,24 @@ describe("settings", () => {
     expect(loadSavedSettings()?.settings).toMatchObject({
       profile: "multicolor",
       outputSuffix: "-clean",
-      codeOutputName: "pifagor-svg.svg",
+      codeOutputName: "pifagor",
       prettyMarkup: false
     });
+  });
+
+  it("migrates the old pasted-code default filename to the new extension-free default", () => {
+    localStorage.setItem(
+      "pifagor-svg:web-settings:v1",
+      JSON.stringify({
+        locale: "ru",
+        settings: {
+          ...defaultSettings,
+          codeOutputName: "pifagor-svg.svg"
+        },
+        preview: defaultPreviewSettings
+      })
+    );
+
+    expect(loadSavedSettings()?.settings.codeOutputName).toBe("pifagor");
   });
 });

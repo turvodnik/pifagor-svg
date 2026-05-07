@@ -237,7 +237,9 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
     fireEvent.click(screen.getByRole("button", { name: /^Optimize$/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /Pretty markup/i }));
+    const prettyButton = await screen.findByRole("button", { name: /Pretty markup/i });
+    expect(prettyButton).not.toHaveTextContent(/Pretty markup/i);
+    fireEvent.click(prettyButton);
     fireEvent.click(screen.getByRole("button", { name: /^Copy SVG$/i }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalled());
@@ -274,7 +276,17 @@ describe("App", () => {
 
     await waitFor(() => expect(capturedBlobs).toHaveLength(1));
     await expect(readBlobText(capturedBlobs[0])).resolves.toBe(editedSvg);
-    expect(downloadNames).toEqual(["pifagor-svg.svg"]);
+    expect(downloadNames).toEqual(["pifagor.svg"]);
+  });
+
+  it("shows only the readable-code label in settings", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Settings$/i }));
+
+    const drawer = document.querySelector(".settings-drawer") as HTMLElement;
+    expect(within(drawer).getByLabelText(/Pretty markup/i)).toBeInTheDocument();
+    expect(within(drawer).queryByText(/Format regular SVG output with line breaks and indentation/i)).not.toBeInTheDocument();
   });
 
   it("re-optimizes edited source file SVG in the current session", async () => {

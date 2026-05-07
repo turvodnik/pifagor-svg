@@ -148,7 +148,8 @@ describe("optimizeSvg", () => {
     expect(result.compactSvg).not.toContain("xmlns=");
     expect(result.compactSvg).not.toContain("\n");
     expect(outputFileName("icon.svg", defaultSettings)).toBe("icon-opt.svg");
-    expect(outputFileName("pasted.svg", defaultSettings, "code")).toBe("pifagor-svg.svg");
+    expect(defaultSettings.codeOutputName).toBe("pifagor");
+    expect(outputFileName("pasted.svg", defaultSettings, "code")).toBe("pifagor.svg");
     expect(
       outputFileName("icon.svg", { ...defaultSettings, outputPrefix: "web-", outputSuffix: "-clean" })
     ).toBe("web-icon-clean.svg");

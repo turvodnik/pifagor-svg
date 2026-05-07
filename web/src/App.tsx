@@ -484,14 +484,14 @@ export default function App() {
           <h2>{selected?.outputName ?? t.optimizedCode}</h2>
           <div className="toolbar-buttons">
             <button
-              className={`ghost-button ${settings.prettyMarkup ? "is-active" : ""}`}
+              className={`ghost-button toolbar-icon-button ${settings.prettyMarkup ? "is-active" : ""}`}
               type="button"
               onClick={togglePrettyMarkup}
-              title={t.prettyMarkupHint}
+              title={t.prettyMarkup}
+              aria-label={t.prettyMarkup}
               aria-pressed={settings.prettyMarkup}
             >
               <AlignLeft size={15} />
-              {t.prettyMarkup}
             </button>
             <button className="primary-button" type="button" onClick={downloadSelected}>
               <ArrowDownToLine size={15} />
@@ -794,7 +794,6 @@ export default function App() {
             <input type="checkbox" checked={draftSettings.prettyMarkup} onChange={(event) => patchDraftSettings({ prettyMarkup: event.target.checked })} />
             <span>
               {t.prettyMarkup}
-              <small>{t.prettyMarkupHint}</small>
             </span>
           </label>
           <label>

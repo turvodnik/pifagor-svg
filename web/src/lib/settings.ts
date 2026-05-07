@@ -85,7 +85,7 @@ export function normalizeOptimizationSettings(value: Partial<OptimizationSetting
     ...defaultSettings,
     ...rawWithoutLegacyLogo,
     profile,
-    codeOutputName: raw.codeOutputName || defaultSettings.codeOutputName,
+    codeOutputName: normalizeCodeOutputName(raw.codeOutputName),
     outputPrefix: raw.outputPrefix ?? defaultSettings.outputPrefix,
     outputSuffix: raw.outputSuffix ?? defaultSettings.outputSuffix,
     prettyMarkup: Boolean(raw.prettyMarkup),
@@ -95,6 +95,13 @@ export function normalizeOptimizationSettings(value: Partial<OptimizationSetting
     },
     preserveEmbeddedImages: Boolean(raw.preserveEmbeddedImages)
   };
+}
+
+function normalizeCodeOutputName(value: string | undefined): string {
+  if (!value || value === "pifagor-svg.svg") {
+    return defaultSettings.codeOutputName;
+  }
+  return value;
 }
 
 function normalizePreviewSettings(value: Partial<PreviewSettings> | undefined): PreviewSettings {

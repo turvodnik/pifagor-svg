@@ -175,7 +175,7 @@ export const defaultSettings: OptimizationSettings = {
   unwrapEmptyGroups: true,
   requireNoInternalReferences: true,
   prettyMarkup: false,
-  codeOutputName: "pifagor-svg.svg",
+  codeOutputName: "pifagor",
   outputPrefix: "",
   outputSuffix: "-opt",
   expertPlugins: defaultExpertPlugins,
@@ -349,7 +349,7 @@ function normalizeRuntimeSettings(settings: OptimizationSettings): OptimizationS
     ...defaultSettings,
     ...settingsWithoutLegacyLogo,
     profile,
-    codeOutputName: settings.codeOutputName || defaultSettings.codeOutputName,
+    codeOutputName: normalizeCodeOutputName(settings.codeOutputName),
     outputSuffix: settings.outputSuffix ?? defaultSettings.outputSuffix,
     expertPlugins: {
       ...defaultExpertPlugins,
@@ -1041,8 +1041,15 @@ function sanitizeFileNamePart(value: string): string {
 }
 
 function ensureSvgExtension(value: string): string {
-  const clean = sanitizeFileName(value) || "pifagor-svg";
+  const clean = sanitizeFileName(value) || defaultSettings.codeOutputName;
   return clean.toLowerCase().endsWith(".svg") ? clean : `${clean}.svg`;
+}
+
+function normalizeCodeOutputName(value: string | undefined): string {
+  if (!value || value === "pifagor-svg.svg") {
+    return defaultSettings.codeOutputName;
+  }
+  return value;
 }
 
 function allElements(root: Element): Element[] {
