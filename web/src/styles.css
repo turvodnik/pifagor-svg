@@ -383,32 +383,23 @@ p {
 
 .file-pill-thumb span {
   display: grid;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   place-items: center;
+  line-height: 0;
 }
 
 .file-pill-thumb svg {
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: auto;
 }
 
 .file-pill-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.file-pill-copy {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.file-pill-size {
-  color: var(--muted);
-  font-size: 0.68rem;
-  line-height: 1;
 }
 
 .file-rail button.is-selected {

@@ -575,28 +575,22 @@ export default function App() {
               </div>
               {files.length > 0 && (
                 <div className="file-rail" aria-label={t.files}>
-                  {files.map((file, index) => {
-                    const fileSize = formatByteSize(file.originalSizeBytes);
-                    return (
-                      <button
-                        key={`${file.name}-${index}`}
-                        className={index === selectedIndex ? "is-selected" : ""}
-                        type="button"
-                        onClick={() => {
-                          setSelectedIndex(index);
-                          setInputMode("files");
-                        }}
-                      >
-                        <span className={`file-pill-thumb preview-bg-${previewSettings.backgroundMode}`} style={previewStageStyle} aria-hidden="true">
-                          {file.originalPreviewSvg ? <span dangerouslySetInnerHTML={{ __html: file.originalPreviewSvg }} /> : <Files size={14} />}
-                        </span>
-                        <span className="file-pill-copy">
-                          <span className="file-pill-name">{file.name}</span>
-                          {fileSize && <span className="file-pill-size">{fileSize}</span>}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {files.map((file, index) => (
+                    <button
+                      key={`${file.name}-${index}`}
+                      className={index === selectedIndex ? "is-selected" : ""}
+                      type="button"
+                      onClick={() => {
+                        setSelectedIndex(index);
+                        setInputMode("files");
+                      }}
+                    >
+                      <span className={`file-pill-thumb preview-bg-${previewSettings.backgroundMode}`} style={previewStageStyle} aria-hidden="true">
+                        {file.originalPreviewSvg ? <span dangerouslySetInnerHTML={{ __html: file.originalPreviewSvg }} /> : <Files size={14} />}
+                      </span>
+                      <span className="file-pill-name">{file.name}</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
