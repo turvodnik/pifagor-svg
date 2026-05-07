@@ -452,11 +452,11 @@ export default function App() {
           {previewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: previewSvg }} /> : null}
         </div>
         <div className="panel-meta">
-          <p className="section-label">{t.result}</p>
-          <h2>
-            {selected?.outputName ?? t.optimizedCode}
+          <p className="section-label">
+            {t.result}
             {selectedResultSize && <> <span className="size-label">({selectedResultSize})</span></>}
-          </h2>
+          </p>
+          <h2>{selected?.outputName ?? t.optimizedCode}</h2>
           <div className="toolbar-buttons">
             <button className="primary-button" type="button" onClick={downloadSelected}>
               <ArrowDownToLine size={15} />
@@ -607,11 +607,11 @@ export default function App() {
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
                 </div>
                 <div className="panel-meta">
-                  <p className="section-label">{t.originalCode}</p>
-                  <h2>
-                    {selectedFile?.name ?? t.sourceCode}
+                  <p className="section-label">
+                    {t.originalCode}
                     {selectedSourceSize && <> <span className="size-label">({selectedSourceSize})</span></>}
-                  </h2>
+                  </p>
+                  <h2>{selectedFile?.name ?? t.sourceCode}</h2>
                   <div className="toolbar-buttons">
                     <button className="primary-button" type="button" onClick={reoptimizeSelectedSource} disabled={!selectedFile}>
                       <Zap size={15} />
@@ -639,11 +639,11 @@ export default function App() {
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
                 </div>
                 <div className="panel-meta">
-                  <p className="section-label">{t.originalCode}</p>
-                  <h2>
-                    {t.sourceCode}
+                  <p className="section-label">
+                    {t.originalCode}
                     {selectedSourceSize && <> <span className="size-label">({selectedSourceSize})</span></>}
-                  </h2>
+                  </p>
+                  <h2>{t.sourceCode}</h2>
                   <div className="toolbar-buttons">
                     <button className="primary-button" type="button" onClick={handlePasteOptimize}>
                       <Zap size={15} />

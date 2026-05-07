@@ -127,8 +127,10 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(document.querySelector(".file-pill-size")).toHaveTextContent(/\d+ B/);
-      expect(document.querySelector(".source-panel .panel-meta h2")).toHaveTextContent(/size\.svg\s+\(\d+ B\)/);
-      expect(document.querySelector(".preview-panel .panel-meta h2")).toHaveTextContent(/size-opt\.svg\s+\(\d+ B\)/);
+      expect(document.querySelector(".source-panel .section-label")).toHaveTextContent(/Original SVG code\s+\(\d+ B\)/);
+      expect(document.querySelector(".preview-panel .section-label")).toHaveTextContent(/Result\s+\(\d+ B\)/);
+      expect(document.querySelector(".source-panel .panel-meta h2")).toHaveTextContent(/^size\.svg$/);
+      expect(document.querySelector(".preview-panel .panel-meta h2")).toHaveTextContent(/^size-opt\.svg$/);
     });
   });
 
