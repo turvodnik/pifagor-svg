@@ -72,9 +72,9 @@ export const locales: Locale[] = supportedLocales;
 
 export function normalizeOptimizationSettings(value: Partial<OptimizationSettings> | undefined): OptimizationSettings {
   const raw = value ?? {};
-  const rawProfile = (raw as { profile?: OptimizationProfile; logoOptimization?: boolean }).profile;
-  const profile = (raw as { logoOptimization?: boolean }).logoOptimization
-    ? "logo"
+  const rawProfile = (raw as { profile?: OptimizationProfile | "logo"; logoOptimization?: boolean }).profile;
+  const profile = (raw as { logoOptimization?: boolean }).logoOptimization || rawProfile === "logo"
+    ? "multicolor"
     : isSupportedProfile(rawProfile)
       ? rawProfile
       : defaultSettings.profile;
@@ -88,6 +88,7 @@ export function normalizeOptimizationSettings(value: Partial<OptimizationSetting
     codeOutputName: raw.codeOutputName || defaultSettings.codeOutputName,
     outputPrefix: raw.outputPrefix ?? defaultSettings.outputPrefix,
     outputSuffix: raw.outputSuffix ?? defaultSettings.outputSuffix,
+    prettyMarkup: Boolean(raw.prettyMarkup),
     expertPlugins: {
       ...defaultExpertPlugins,
       ...raw.expertPlugins
@@ -105,5 +106,5 @@ function normalizePreviewSettings(value: Partial<PreviewSettings> | undefined): 
 }
 
 function isSupportedProfile(value: unknown): value is OptimizationProfile {
-  return value === "auto" || value === "icon" || value === "logo" || value === "multicolor" || value === "expert";
+  return value === "auto" || value === "icon" || value === "multicolor" || value === "expert";
 }

@@ -489,6 +489,17 @@ p {
   border-color: var(--border);
 }
 
+.ghost-button.is-active {
+  color: var(--text);
+  border-color: rgba(79, 183, 239, 0.62);
+  background: rgba(0, 135, 199, 0.16);
+}
+
+.icon-only {
+  width: 34px;
+  padding-inline: 0;
+}
+
 .compact-button {
   min-height: 36px;
   border-radius: 999px;
@@ -570,29 +581,44 @@ textarea {
 }
 
 .svg-code-editor {
+  position: relative;
   flex: 1;
-  min-height: clamp(360px, 45vh, 620px);
-  overflow: hidden;
+  height: clamp(320px, 42vh, 520px);
+  min-height: 260px;
+  max-height: none;
+  overflow: auto;
+  resize: vertical;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: rgba(1, 7, 15, 0.82);
 }
 
 .code-source .svg-code-editor {
-  min-height: clamp(500px, 58vh, 760px);
+  height: clamp(340px, 44vh, 560px);
 }
 
 .source-panel .svg-code-editor {
-  min-height: clamp(420px, 48vh, 680px);
+  height: clamp(340px, 44vh, 560px);
 }
 
 .code-card .svg-code-editor {
   width: 100%;
   height: 100%;
   min-height: 100%;
+  resize: none;
   border: 0;
   border-radius: 14px;
   background: transparent;
+}
+
+.is-editor-expanded .svg-code-editor {
+  height: calc(100svh - 300px);
+  min-height: min(680px, calc(100svh - 220px));
+}
+
+.is-editor-expanded .code-card {
+  height: calc(100svh - 300px);
+  min-height: min(680px, calc(100svh - 220px));
 }
 
 .svg-code-editor .cm-editor {
@@ -611,21 +637,13 @@ textarea {
 }
 
 .svg-code-editor .cm-content {
-  padding: 14px 14px 14px 8px;
-}
-
-.svg-code-editor .cm-lineNumbers {
-  min-width: 34px;
-  color: rgba(184, 200, 217, 0.48);
+  padding: 16px 18px;
 }
 
 .svg-code-editor .cm-gutters {
-  border-right: 1px solid rgba(211, 222, 235, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(184, 200, 217, 0.48);
+  display: none;
 }
 
-.svg-code-editor .cm-activeLineGutter,
 .svg-code-editor .cm-activeLine {
   background: rgba(0, 135, 199, 0.08);
 }
@@ -1611,6 +1629,17 @@ footer a {
   .code-source textarea,
   .source-panel textarea {
     min-height: 300px;
+  }
+
+  .svg-code-editor,
+  .code-source .svg-code-editor,
+  .source-panel .svg-code-editor {
+    height: 300px;
+    min-height: 260px;
+  }
+
+  .toolbar-buttons .icon-only {
+    width: 38px;
   }
 
   .panel-top {

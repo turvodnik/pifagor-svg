@@ -72,6 +72,10 @@ describe("optimizeSvg", () => {
     expect(result.fullSvg).not.toContain("currentColor");
   });
 
+  it("uses multicolor as the conservative brand-safe profile", () => {
+    expect(logoSettings.profile).toBe("multicolor");
+  });
+
   it("returns manual review when internal references would be unsafe to remove", () => {
     const input = `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -151,6 +155,18 @@ describe("optimizeSvg", () => {
     expect(
       outputFileName("pasted.svg", { ...defaultSettings, codeOutputName: "custom-inline" }, "code")
     ).toBe("custom-inline.svg");
+  });
+
+  it("keeps regular SVG compact by default and formats it when pretty markup is enabled", () => {
+    const input = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/></svg>`;
+    const compactResult = optimizeSvg(input, defaultSettings);
+    const prettyResult = optimizeSvg(input, { ...defaultSettings, prettyMarkup: true });
+
+    expect(defaultSettings.prettyMarkup).toBe(false);
+    expect(compactResult.fullSvg).not.toContain("\n");
+    expect(prettyResult.fullSvg).toContain("\n");
+    expect(prettyResult.fullSvg).toContain("  <path");
+    expect(prettyResult.compactSvg).not.toContain("\n");
   });
 
   it("creates inline HTML SVG without xmlns while preserving viewBox", () => {

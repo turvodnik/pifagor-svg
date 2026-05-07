@@ -9,7 +9,7 @@ describe("settings", () => {
   });
 
   it("stores the single editable preset in localStorage", () => {
-    const next = { ...defaultSettings, profile: "logo" as const, strokeWidth: "2" };
+    const next = { ...defaultSettings, profile: "multicolor" as const, strokeWidth: "2", prettyMarkup: true };
     const preview = { ...defaultPreviewSettings, backgroundMode: "light" as const };
 
     saveSettings({ locale: "de", settings: next, preview });
@@ -32,9 +32,10 @@ describe("settings", () => {
     );
 
     expect(loadSavedSettings()?.settings).toMatchObject({
-      profile: "logo",
+      profile: "multicolor",
       outputSuffix: "-clean",
-      codeOutputName: "pifagor-svg.svg"
+      codeOutputName: "pifagor-svg.svg",
+      prettyMarkup: false
     });
   });
 });

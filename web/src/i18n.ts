@@ -25,13 +25,15 @@ export interface Copy {
   settingsShort: string;
   applySettings: string;
   customPreset: string;
+  prettyMarkup: string;
+  prettyMarkupHint: string;
+  expandEditor: string;
+  collapseEditor: string;
   profile: string;
   profileAuto: string;
   profileIcon: string;
-  profileLogo: string;
   profileMulticolor: string;
   profileExpert: string;
-  logoMode: string;
   logoHint: string;
   size: string;
   noSize: string;
@@ -113,13 +115,15 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Settings",
     applySettings: "Apply",
     customPreset: "Custom preset active",
+    prettyMarkup: "Pretty markup",
+    prettyMarkupHint: "Format regular SVG output with line breaks and indentation.",
+    expandEditor: "Expand code editor",
+    collapseEditor: "Collapse code editor",
     profile: "Profile",
     profileAuto: "Auto",
     profileIcon: "Icon",
-    profileLogo: "Logo optimization",
     profileMulticolor: "Multicolor",
     profileExpert: "Expert",
-    logoMode: "Logo optimization",
     logoHint: "Preserve brand colors and backgrounds while still removing unsafe SVG content.",
     size: "Size",
     noSize: "No width/height",
@@ -199,13 +203,15 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Настройки",
     applySettings: "Применить",
     customPreset: "Измененный пресет активен",
+    prettyMarkup: "Читаемый код",
+    prettyMarkupHint: "Форматировать обычный SVG с переносами и отступами.",
+    expandEditor: "Развернуть редактор кода",
+    collapseEditor: "Свернуть редактор кода",
     profile: "Профиль",
     profileAuto: "Авто",
     profileIcon: "Иконка",
-    profileLogo: "Оптимизация логотипа",
     profileMulticolor: "Многоцветный",
     profileExpert: "Эксперт",
-    logoMode: "Оптимизация логотипа",
     logoHint: "Сохраняет фирменные цвета и фон, но продолжает удалять небезопасный SVG-код.",
     size: "Размер",
     noSize: "Без width/height",
@@ -285,13 +291,15 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Налаштування",
     applySettings: "Застосувати",
     customPreset: "Змінений пресет активний",
+    prettyMarkup: "Читабельний код",
+    prettyMarkupHint: "Форматувати звичайний SVG з переносами та відступами.",
+    expandEditor: "Розгорнути редактор коду",
+    collapseEditor: "Згорнути редактор коду",
     profile: "Профіль",
     profileAuto: "Авто",
     profileIcon: "Іконка",
-    profileLogo: "Оптимізація логотипа",
     profileMulticolor: "Багатоколірний",
     profileExpert: "Експерт",
-    logoMode: "Оптимізація логотипа",
     logoHint: "Зберігає фірмові кольори та фон, але видаляє небезпечний SVG-код.",
     size: "Розмір",
     noSize: "Без width/height",
@@ -371,13 +379,15 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Ajustes",
     applySettings: "Aplicar",
     customPreset: "Preset personalizado activo",
+    prettyMarkup: "Código legible",
+    prettyMarkupHint: "Formatea el SVG normal con saltos de línea e indentación.",
+    expandEditor: "Expandir editor de código",
+    collapseEditor: "Contraer editor de código",
     profile: "Perfil",
     profileAuto: "Auto",
     profileIcon: "Icono",
-    profileLogo: "Optimización de logotipo",
     profileMulticolor: "Multicolor",
     profileExpert: "Experto",
-    logoMode: "Optimización de logotipo",
     logoHint: "Conserva colores de marca y fondos mientras elimina contenido SVG inseguro.",
     size: "Tamaño",
     noSize: "Sin width/height",
@@ -457,13 +467,15 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Einstellungen",
     applySettings: "Anwenden",
     customPreset: "Eigenes Preset aktiv",
+    prettyMarkup: "Lesbarer Code",
+    prettyMarkupHint: "Formatiert normales SVG mit Zeilenumbrüchen und Einzügen.",
+    expandEditor: "Code-Editor erweitern",
+    collapseEditor: "Code-Editor verkleinern",
     profile: "Profil",
     profileAuto: "Auto",
     profileIcon: "Icon",
-    profileLogo: "Logo-Optimierung",
     profileMulticolor: "Mehrfarbig",
     profileExpert: "Experte",
-    logoMode: "Logo-Optimierung",
     logoHint: "Bewahrt Markenfarben und Hintergründe, entfernt aber unsicheren SVG-Code.",
     size: "Größe",
     noSize: "Ohne width/height",

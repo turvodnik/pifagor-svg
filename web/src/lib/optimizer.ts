@@ -2,7 +2,7 @@ import { optimize as optimizeWithSvgo } from "svgo/browser";
 import type { Config as SvgoConfig } from "svgo";
 
 export type OptimizationStatus = "optimized" | "requiresManualReview";
-export type OptimizationProfile = "auto" | "icon" | "logo" | "multicolor" | "expert";
+export type OptimizationProfile = "auto" | "icon" | "multicolor" | "expert";
 export type SizeMode = "none" | "inline1em" | "fixed";
 export type SizeUnit = "px" | "em" | "rem" | "percent";
 export type ColorMode = "currentColor" | "custom" | "preserve";
@@ -44,6 +44,7 @@ export interface OptimizationSettings {
   removeIDs: boolean;
   unwrapEmptyGroups: boolean;
   requireNoInternalReferences: boolean;
+  prettyMarkup: boolean;
   codeOutputName: string;
   outputPrefix: string;
   outputSuffix: string;
@@ -173,6 +174,7 @@ export const defaultSettings: OptimizationSettings = {
   removeIDs: true,
   unwrapEmptyGroups: true,
   requireNoInternalReferences: true,
+  prettyMarkup: false,
   codeOutputName: "pifagor-svg.svg",
   outputPrefix: "",
   outputSuffix: "-opt",
@@ -182,7 +184,7 @@ export const defaultSettings: OptimizationSettings = {
 
 export const logoSettings: OptimizationSettings = {
   ...defaultSettings,
-  profile: "logo",
+  profile: "multicolor",
   strokeWidthMode: "preserve",
   removeBackground: false,
   strokeColorMode: "preserve",
@@ -192,7 +194,7 @@ export const logoSettings: OptimizationSettings = {
 
 export function effectiveSettings(settings: OptimizationSettings, profile: OptimizationProfile = settings.profile): OptimizationSettings {
   const normalized = normalizeRuntimeSettings(settings);
-  if (profile !== "logo" && profile !== "multicolor") {
+  if (profile !== "multicolor") {
     return normalized;
   }
 
@@ -259,10 +261,11 @@ export function optimizeSvg(svg: string, rawSettings: OptimizationSettings = def
 
   if (warnings.length > 0) {
     const fullSvg = serialize(optimizedRoot);
+    const formattedFullSvg = formatSvgMarkup(fullSvg, settings.prettyMarkup);
     return {
       status: "requiresManualReview",
       profile,
-      fullSvg,
+      fullSvg: formattedFullSvg,
       compactSvg: compact(fullSvg),
       warnings: unique(warnings)
     };
@@ -286,12 +289,12 @@ export function optimizeSvg(svg: string, rawSettings: OptimizationSettings = def
   ensureAttribute(optimizedRoot, "aria-hidden", "true");
   ensureAttribute(optimizedRoot, "focusable", "false");
 
-  const fullSvg = serialize(optimizedRoot);
+  const serializedSvg = serialize(optimizedRoot);
   return {
     status: "optimized",
     profile,
-    fullSvg,
-    compactSvg: compact(fullSvg),
+    fullSvg: formatSvgMarkup(serializedSvg, settings.prettyMarkup),
+    compactSvg: compact(serializedSvg),
     warnings: []
   };
 }
@@ -313,6 +316,10 @@ export function toInlineHtmlSvg(svg: string): string {
   return compact(svg);
 }
 
+export function formatSvgMarkup(svg: string, pretty: boolean): string {
+  return pretty ? prettifySvg(svg) : compactFullSvg(svg);
+}
+
 export function sanitizeSvgForPreview(svg: string): string {
   const document = new DOMParser().parseFromString(svg, "image/svg+xml");
   const parserError = document.querySelector("parsererror");
@@ -330,7 +337,12 @@ export function sanitizeSvgForPreview(svg: string): string {
 }
 
 function normalizeRuntimeSettings(settings: OptimizationSettings): OptimizationSettings {
-  const profile = settings.logoOptimization ? "logo" : isOptimizationProfile(settings.profile) ? settings.profile : defaultSettings.profile;
+  const rawProfile = (settings as { profile?: OptimizationProfile | "logo" }).profile;
+  const profile = settings.logoOptimization || rawProfile === "logo"
+    ? "multicolor"
+    : isOptimizationProfile(rawProfile)
+      ? rawProfile
+      : defaultSettings.profile;
   const settingsWithoutLegacyLogo = { ...settings };
   delete settingsWithoutLegacyLogo.logoOptimization;
   return {
@@ -343,16 +355,17 @@ function normalizeRuntimeSettings(settings: OptimizationSettings): OptimizationS
       ...defaultExpertPlugins,
       ...settings.expertPlugins
     },
+    prettyMarkup: Boolean(settings.prettyMarkup),
     preserveEmbeddedImages: Boolean(settings.preserveEmbeddedImages)
   };
 }
 
 function isOptimizationProfile(value: unknown): value is OptimizationProfile {
-  return value === "auto" || value === "icon" || value === "logo" || value === "multicolor" || value === "expert";
+  return value === "auto" || value === "icon" || value === "multicolor" || value === "expert";
 }
 
 function resolveProfile(root: Element, rawSettings: OptimizationSettings): OptimizationProfile {
-  const requested = rawSettings.logoOptimization ? "logo" : rawSettings.profile ?? "auto";
+  const requested = normalizeRuntimeSettings(rawSettings).profile;
   if (requested !== "auto") {
     return isOptimizationProfile(requested) ? requested : "icon";
   }
@@ -393,7 +406,7 @@ function runSvgo(svg: string, settings: OptimizationSettings, profile: Optimizat
 function svgoConfig(settings: OptimizationSettings, profile: OptimizationProfile): SvgoConfig {
   const expert = settings.expertPlugins;
   const isExpert = profile === "expert";
-  const conservative = profile === "logo" || profile === "multicolor";
+  const conservative = profile === "multicolor";
   const cleanupIds = isExpert ? expert.cleanupIds : !conservative;
   const removeHiddenElems = isExpert ? expert.removeHiddenElems : profile === "icon";
   const removeTitle = isExpert ? expert.removeTitle : false;
@@ -801,6 +814,49 @@ function compact(svg: string): string {
     .replace(/\s+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g, "")
     .replace(/\n/g, "")
     .trim();
+}
+
+function compactFullSvg(svg: string): string {
+  return svg
+    .replace(/>\s+</g, "><")
+    .replace(/\n+/g, "")
+    .trim();
+}
+
+function prettifySvg(svg: string): string {
+  const compacted = compactFullSvg(svg);
+  if (!compacted) {
+    return "";
+  }
+
+  let depth = 0;
+  return compacted
+    .replace(/></g, ">\n<")
+    .split("\n")
+    .map((line) => {
+      const token = line.trim();
+      if (!token) {
+        return "";
+      }
+      if (/^<\//.test(token)) {
+        depth = Math.max(0, depth - 1);
+      }
+      const formatted = `${"  ".repeat(depth)}${token}`;
+      if (isOpeningTag(token)) {
+        depth += 1;
+      }
+      return formatted;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function isOpeningTag(token: string): boolean {
+  return (
+    /^<[A-Za-z][\w:-]*(?:\s|>)/.test(token) &&
+    !token.endsWith("/>") &&
+    !token.includes("</")
+  );
 }
 
 function resolvedStrokeColorValue(original: string | null, settings: OptimizationSettings): string {

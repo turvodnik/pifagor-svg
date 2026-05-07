@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowDownToLine,
+  AlignLeft,
   ChevronDown,
   Code2,
   Copy,
@@ -9,6 +10,8 @@ import {
   Globe2,
   Heart,
   LockKeyhole,
+  Maximize2,
+  Minimize2,
   SlidersHorizontal,
   X,
   RefreshCcw,
@@ -192,6 +195,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [outputMode, setOutputMode] = useState<BatchOutputMode>("zip");
   const [toast, setToast] = useState<string | null>(null);
+  const [expandedEditors, setExpandedEditors] = useState({ source: false, result: false });
   const folderInputRef = useRef<HTMLInputElement>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const t = copy[locale];
@@ -199,7 +203,6 @@ export default function App() {
   const profileOptions: SelectOption<OptimizationProfile>[] = [
     { value: "auto", label: t.profileAuto },
     { value: "icon", label: t.profileIcon },
-    { value: "logo", label: t.profileLogo },
     { value: "multicolor", label: t.profileMulticolor },
     { value: "expert", label: t.profileExpert }
   ];
@@ -268,7 +271,7 @@ export default function App() {
   const selectedSvg = displaySvg(selected);
   const previewSvg = previewSafeSvg(selectedSvg, settings);
   const htmlSvg = selectedSvg ? toInlineHtmlSvg(selectedSvg) : "";
-  const paintControlsLocked = draftSettings.profile === "logo" || draftSettings.profile === "multicolor";
+  const paintControlsLocked = draftSettings.profile === "multicolor";
   const selectedResultSize = formatByteSize(resultByteSize(selected));
   const selectedSourceSize = formatByteSize(inputMode === "files" ? selectedFile?.originalSizeBytes : byteSize(pastedSvg));
   const sourcePreviewSvg = useMemo(() => {
@@ -456,6 +459,14 @@ export default function App() {
     setIsSettingsOpen(false);
   };
 
+  const togglePrettyMarkup = () => {
+    commitPreset({ ...settings, prettyMarkup: !settings.prettyMarkup }, previewSettings);
+  };
+
+  const toggleEditorExpansion = (target: "source" | "result") => {
+    setExpandedEditors((current) => ({ ...current, [target]: !current[target] }));
+  };
+
   const currentWarnings = useMemo(() => {
     if (!selected) {
       return [];
@@ -467,7 +478,7 @@ export default function App() {
   }, [selected]);
 
   const renderPreviewPanel = () => (
-    <section className={`preview-panel ${inputMode === "code" ? "code-result" : ""}`}>
+    <section className={`preview-panel ${inputMode === "code" ? "code-result" : ""} ${expandedEditors.result ? "is-editor-expanded" : ""}`}>
       <div className="panel-top">
         <div className={previewStageClassName} style={previewStageStyle}>
           {previewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: previewSvg }} /> : null}
@@ -479,6 +490,16 @@ export default function App() {
           </p>
           <h2>{selected?.outputName ?? t.optimizedCode}</h2>
           <div className="toolbar-buttons">
+            <button
+              className={`ghost-button ${settings.prettyMarkup ? "is-active" : ""}`}
+              type="button"
+              onClick={togglePrettyMarkup}
+              title={t.prettyMarkupHint}
+              aria-pressed={settings.prettyMarkup}
+            >
+              <AlignLeft size={15} />
+              {t.prettyMarkup}
+            </button>
             <button className="primary-button" type="button" onClick={downloadSelected}>
               <ArrowDownToLine size={15} />
               {t.download}
@@ -490,6 +511,15 @@ export default function App() {
             <button className="ghost-button" type="button" onClick={copyHtmlSvg} title={t.copyHtmlSvg} aria-label={`${t.htmlSvg}: ${t.copyHtmlSvg}`}>
               <Copy size={15} />
               {t.htmlSvg}
+            </button>
+            <button
+              className="ghost-button icon-only"
+              type="button"
+              onClick={() => toggleEditorExpansion("result")}
+              title={expandedEditors.result ? t.collapseEditor : t.expandEditor}
+              aria-label={expandedEditors.result ? t.collapseEditor : t.expandEditor}
+            >
+              {expandedEditors.result ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </button>
           </div>
         </div>
@@ -616,7 +646,7 @@ export default function App() {
               )}
             </div>
 
-            <section className="paste-panel source-panel">
+            <section className={`paste-panel source-panel ${expandedEditors.source ? "is-editor-expanded" : ""}`}>
               <div className="panel-top">
                 <div className={previewStageClassName} style={previewStageStyle}>
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
@@ -632,6 +662,15 @@ export default function App() {
                       <Zap size={15} />
                       {t.optimizePaste}
                     </button>
+                    <button
+                      className="ghost-button icon-only"
+                      type="button"
+                      onClick={() => toggleEditorExpansion("source")}
+                      title={expandedEditors.source ? t.collapseEditor : t.expandEditor}
+                      aria-label={expandedEditors.source ? t.collapseEditor : t.expandEditor}
+                    >
+                      {expandedEditors.source ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -642,7 +681,7 @@ export default function App() {
           </section>
         ) : (
           <section className="workspace code-workspace" aria-label="SVG code optimizer workspace">
-            <section className="paste-panel code-source">
+            <section className={`paste-panel code-source ${expandedEditors.source ? "is-editor-expanded" : ""}`}>
               <div className="panel-top">
                 <div className={previewStageClassName} style={previewStageStyle}>
                   {sourcePreviewSvg ? <div className="svg-preview" dangerouslySetInnerHTML={{ __html: sourcePreviewSvg }} /> : null}
@@ -657,6 +696,15 @@ export default function App() {
                     <button className="primary-button" type="button" onClick={handlePasteOptimize}>
                       <Zap size={15} />
                       {t.optimizePaste}
+                    </button>
+                    <button
+                      className="ghost-button icon-only"
+                      type="button"
+                      onClick={() => toggleEditorExpansion("source")}
+                      title={expandedEditors.source ? t.collapseEditor : t.expandEditor}
+                      aria-label={expandedEditors.source ? t.collapseEditor : t.expandEditor}
+                    >
+                      {expandedEditors.source ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                     </button>
                   </div>
                 </div>
@@ -718,8 +766,8 @@ export default function App() {
           </div>
         </Field>
 
-        {(draftSettings.profile === "logo" || draftSettings.profile === "multicolor") && (
-          <p className="settings-note">{draftSettings.profile === "logo" ? t.logoHint : t.logoHint}</p>
+        {draftSettings.profile === "multicolor" && (
+          <p className="settings-note">{t.logoHint}</p>
         )}
 
         <Field label={t.size}>
@@ -776,6 +824,13 @@ export default function App() {
         )}
 
         <div className="toggle-stack">
+          <label>
+            <input type="checkbox" checked={draftSettings.prettyMarkup} onChange={(event) => patchDraftSettings({ prettyMarkup: event.target.checked })} />
+            <span>
+              {t.prettyMarkup}
+              <small>{t.prettyMarkupHint}</small>
+            </span>
+          </label>
           <label>
             <input type="checkbox" checked={draftSettings.movePaintToRoot} disabled={paintControlsLocked} onChange={(event) => patchDraftSettings({ movePaintToRoot: event.target.checked })} />
             {t.movePaint}

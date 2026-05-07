@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { xml } from "@codemirror/lang-xml";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView, drawSelection, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
 
 interface SvgCodeEditorProps {
   id?: string;
@@ -11,6 +12,19 @@ interface SvgCodeEditorProps {
   value: string;
   onChange: (value: string) => void;
 }
+
+const svgHighlightStyle = HighlightStyle.define([
+  { tag: tags.angleBracket, color: "#c792ea" },
+  { tag: tags.tagName, color: "#c792ea" },
+  { tag: tags.attributeName, color: "#dde6f2" },
+  { tag: tags.attributeValue, color: "#7fcb9a" },
+  { tag: tags.string, color: "#7fcb9a" },
+  { tag: tags.number, color: "#dfe8ef" },
+  { tag: tags.comment, color: "#cc7a33", fontStyle: "italic" },
+  { tag: tags.definition(tags.tagName), color: "#c792ea" },
+  { tag: tags.processingInstruction, color: "#9aa9bb" },
+  { tag: tags.invalid, color: "#ff7a90" }
+]);
 
 export function SvgCodeEditor({ id, ariaLabel, value, onChange }: SvgCodeEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -32,12 +46,9 @@ export function SvgCodeEditor({ id, ariaLabel, value, onChange }: SvgCodeEditorP
       state: EditorState.create({
         doc: value,
         extensions: [
-          lineNumbers(),
-          highlightActiveLineGutter(),
           history(),
-          drawSelection(),
           xml(),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          syntaxHighlighting(svgHighlightStyle, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {

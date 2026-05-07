@@ -43,7 +43,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Settings$/i }));
 
     expect(screen.getByRole("heading", { name: /Preset settings/i })).toBeInTheDocument();
-    expect(screen.getByText(/Logo optimization/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Multicolor$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Logo optimization/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Contrast grid/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Transparent grid/i)).not.toBeInTheDocument();
   });
@@ -69,7 +70,16 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
 
     expect(document.querySelectorAll(".svg-code-editor")).toHaveLength(2);
+    expect(document.querySelector(".cm-lineNumbers")).not.toBeInTheDocument();
     expect(screen.getByText(/File names/i)).toBeInTheDocument();
+  });
+
+  it("keeps long code editors bounded by default and manually expandable", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*height:\s*clamp\(/s);
+    expect(styles).toMatch(/\.svg-code-editor\s*{[^}]*resize:\s*vertical;/s);
+    expect(styles).toMatch(/\.is-editor-expanded\s+\.svg-code-editor\s*{[^}]*height:\s*calc\(100svh/s);
   });
 
   it("applies reset defaults to the active preset immediately", () => {
@@ -195,6 +205,20 @@ describe("App", () => {
     expect(copied).toContain('viewBox="0 0 24 24"');
     expect(copied).not.toContain("xmlns=");
     expect(copied).not.toContain("\n");
+  });
+
+  it("toggles readable SVG markup for regular copy output and stores it in the preset", async () => {
+    const writeText = mockClipboard();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Optimize$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Pretty markup/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Copy SVG$/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls.at(-1)?.[0]).toContain("\n");
+    expect(loadSavedSettings()?.settings.prettyMarkup).toBe(true);
   });
 
   it("downloads the manually edited selected SVG", async () => {
