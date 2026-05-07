@@ -97,6 +97,15 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /Expand code editor|Collapse code editor/i })).not.toBeInTheDocument();
   });
 
+  it("uses the requested readable SVG syntax color palette", () => {
+    const editorSource = readFileSync(resolve(process.cwd(), "src/components/SvgCodeEditor.tsx"), "utf8");
+
+    expect(editorSource).toContain('{ tag: tags.attributeName, color: "#7dd3fc" }');
+    expect(editorSource).toContain('{ tag: tags.attributeValue, color: "#f4f7fb" }');
+    expect(editorSource).toContain('{ tag: tags.string, color: "#f4f7fb" }');
+    expect(editorSource).toContain('{ tag: tags.number, color: "#6ee7b7" }');
+  });
+
   it("applies reset defaults to the active preset immediately", () => {
     saveSettings({
       locale: "en",
