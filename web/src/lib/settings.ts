@@ -1,4 +1,4 @@
-import { defaultSettings, type OptimizationSettings } from "./optimizer";
+import { defaultExpertPlugins, defaultSettings, type OptimizationProfile, type OptimizationSettings } from "./optimizer";
 
 export type Locale = "en" | "ru" | "uk" | "es" | "de";
 export type PreviewBackgroundMode = "dark" | "light" | "custom";
@@ -50,7 +50,7 @@ export function loadSavedSettings(): SavedSettings | null {
     }
     return {
       locale: parsed.locale,
-      settings: { ...defaultSettings, ...parsed.settings },
+      settings: normalizeOptimizationSettings(parsed.settings),
       preview: normalizePreviewSettings(parsed.preview)
     };
   } catch {
@@ -70,10 +70,40 @@ export function resetSettings(locale: Locale): SavedSettings {
 
 export const locales: Locale[] = supportedLocales;
 
+export function normalizeOptimizationSettings(value: Partial<OptimizationSettings> | undefined): OptimizationSettings {
+  const raw = value ?? {};
+  const rawProfile = (raw as { profile?: OptimizationProfile; logoOptimization?: boolean }).profile;
+  const profile = (raw as { logoOptimization?: boolean }).logoOptimization
+    ? "logo"
+    : isSupportedProfile(rawProfile)
+      ? rawProfile
+      : defaultSettings.profile;
+  const rawWithoutLegacyLogo = { ...raw };
+  delete rawWithoutLegacyLogo.logoOptimization;
+
+  return {
+    ...defaultSettings,
+    ...rawWithoutLegacyLogo,
+    profile,
+    codeOutputName: raw.codeOutputName || defaultSettings.codeOutputName,
+    outputPrefix: raw.outputPrefix ?? defaultSettings.outputPrefix,
+    outputSuffix: raw.outputSuffix ?? defaultSettings.outputSuffix,
+    expertPlugins: {
+      ...defaultExpertPlugins,
+      ...raw.expertPlugins
+    },
+    preserveEmbeddedImages: Boolean(raw.preserveEmbeddedImages)
+  };
+}
+
 function normalizePreviewSettings(value: Partial<PreviewSettings> | undefined): PreviewSettings {
   const next = { ...defaultPreviewSettings, ...value };
   return {
     ...next,
     backgroundMode: supportedPreviewBackgroundModes.includes(next.backgroundMode) ? next.backgroundMode : defaultPreviewSettings.backgroundMode
   };
+}
+
+function isSupportedProfile(value: unknown): value is OptimizationProfile {
+  return value === "auto" || value === "icon" || value === "logo" || value === "multicolor" || value === "expert";
 }

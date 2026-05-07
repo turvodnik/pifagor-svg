@@ -25,6 +25,12 @@ export interface Copy {
   settingsShort: string;
   applySettings: string;
   customPreset: string;
+  profile: string;
+  profileAuto: string;
+  profileIcon: string;
+  profileLogo: string;
+  profileMulticolor: string;
+  profileExpert: string;
   logoMode: string;
   logoHint: string;
   size: string;
@@ -48,6 +54,15 @@ export interface Copy {
   movePaint: string;
   reset: string;
   output: string;
+  fileNames: string;
+  codeOutputName: string;
+  outputPrefix: string;
+  outputSuffix: string;
+  expertSettings: string;
+  preserveEmbeddedImages: string;
+  mergePaths: string;
+  cleanupIds: string;
+  removeHiddenElems: string;
   zip: string;
   separate: string;
   files: string;
@@ -98,6 +113,12 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Settings",
     applySettings: "Apply",
     customPreset: "Custom preset active",
+    profile: "Profile",
+    profileAuto: "Auto",
+    profileIcon: "Icon",
+    profileLogo: "Logo optimization",
+    profileMulticolor: "Multicolor",
+    profileExpert: "Expert",
     logoMode: "Logo optimization",
     logoHint: "Preserve brand colors and backgrounds while still removing unsafe SVG content.",
     size: "Size",
@@ -121,6 +142,15 @@ export const copy: Record<Locale, Copy> = {
     movePaint: "Move common paint to root",
     reset: "Reset defaults",
     output: "Batch output",
+    fileNames: "File names",
+    codeOutputName: "Pasted code filename",
+    outputPrefix: "File prefix",
+    outputSuffix: "File suffix",
+    expertSettings: "Expert options",
+    preserveEmbeddedImages: "Keep embedded data images",
+    mergePaths: "Merge paths",
+    cleanupIds: "Clean IDs",
+    removeHiddenElems: "Remove hidden elements",
     zip: "ZIP",
     separate: "Separate files",
     files: "Files",
@@ -169,6 +199,12 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Настройки",
     applySettings: "Применить",
     customPreset: "Измененный пресет активен",
+    profile: "Профиль",
+    profileAuto: "Авто",
+    profileIcon: "Иконка",
+    profileLogo: "Оптимизация логотипа",
+    profileMulticolor: "Многоцветный",
+    profileExpert: "Эксперт",
     logoMode: "Оптимизация логотипа",
     logoHint: "Сохраняет фирменные цвета и фон, но продолжает удалять небезопасный SVG-код.",
     size: "Размер",
@@ -192,6 +228,15 @@ export const copy: Record<Locale, Copy> = {
     movePaint: "Выносить общий цвет наверх",
     reset: "Сбросить",
     output: "Массовая выгрузка",
+    fileNames: "Имена файлов",
+    codeOutputName: "Имя для вставленного кода",
+    outputPrefix: "Префикс файлов",
+    outputSuffix: "Суффикс файлов",
+    expertSettings: "Экспертные опции",
+    preserveEmbeddedImages: "Сохранять embedded data-картинки",
+    mergePaths: "Объединять paths",
+    cleanupIds: "Очищать ID",
+    removeHiddenElems: "Удалять скрытые элементы",
     zip: "ZIP",
     separate: "Отдельные файлы",
     files: "Файлы",
@@ -240,6 +285,12 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Налаштування",
     applySettings: "Застосувати",
     customPreset: "Змінений пресет активний",
+    profile: "Профіль",
+    profileAuto: "Авто",
+    profileIcon: "Іконка",
+    profileLogo: "Оптимізація логотипа",
+    profileMulticolor: "Багатоколірний",
+    profileExpert: "Експерт",
     logoMode: "Оптимізація логотипа",
     logoHint: "Зберігає фірмові кольори та фон, але видаляє небезпечний SVG-код.",
     size: "Розмір",
@@ -263,6 +314,15 @@ export const copy: Record<Locale, Copy> = {
     movePaint: "Переносити спільний колір нагору",
     reset: "Скинути",
     output: "Пакетне завантаження",
+    fileNames: "Імена файлів",
+    codeOutputName: "Ім'я для вставленого коду",
+    outputPrefix: "Префікс файлів",
+    outputSuffix: "Суфікс файлів",
+    expertSettings: "Експертні опції",
+    preserveEmbeddedImages: "Зберігати embedded data-зображення",
+    mergePaths: "Об'єднувати paths",
+    cleanupIds: "Очищати ID",
+    removeHiddenElems: "Видаляти приховані елементи",
     zip: "ZIP",
     separate: "Окремі файли",
     files: "Файли",
@@ -311,6 +371,12 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Ajustes",
     applySettings: "Aplicar",
     customPreset: "Preset personalizado activo",
+    profile: "Perfil",
+    profileAuto: "Auto",
+    profileIcon: "Icono",
+    profileLogo: "Optimización de logotipo",
+    profileMulticolor: "Multicolor",
+    profileExpert: "Experto",
     logoMode: "Optimización de logotipo",
     logoHint: "Conserva colores de marca y fondos mientras elimina contenido SVG inseguro.",
     size: "Tamaño",
@@ -334,6 +400,15 @@ export const copy: Record<Locale, Copy> = {
     movePaint: "Mover color común a la raíz",
     reset: "Restablecer",
     output: "Salida por lote",
+    fileNames: "Nombres de archivo",
+    codeOutputName: "Nombre para código pegado",
+    outputPrefix: "Prefijo de archivos",
+    outputSuffix: "Sufijo de archivos",
+    expertSettings: "Opciones expertas",
+    preserveEmbeddedImages: "Conservar imágenes data embebidas",
+    mergePaths: "Unir paths",
+    cleanupIds: "Limpiar IDs",
+    removeHiddenElems: "Eliminar elementos ocultos",
     zip: "ZIP",
     separate: "Archivos separados",
     files: "Archivos",
@@ -382,6 +457,12 @@ export const copy: Record<Locale, Copy> = {
     settingsShort: "Einstellungen",
     applySettings: "Anwenden",
     customPreset: "Eigenes Preset aktiv",
+    profile: "Profil",
+    profileAuto: "Auto",
+    profileIcon: "Icon",
+    profileLogo: "Logo-Optimierung",
+    profileMulticolor: "Mehrfarbig",
+    profileExpert: "Experte",
     logoMode: "Logo-Optimierung",
     logoHint: "Bewahrt Markenfarben und Hintergründe, entfernt aber unsicheren SVG-Code.",
     size: "Größe",
@@ -405,6 +486,15 @@ export const copy: Record<Locale, Copy> = {
     movePaint: "Gemeinsame Farbe an root verschieben",
     reset: "Zurücksetzen",
     output: "Stapel-Export",
+    fileNames: "Dateinamen",
+    codeOutputName: "Name für eingefügten Code",
+    outputPrefix: "Dateipräfix",
+    outputSuffix: "Dateisuffix",
+    expertSettings: "Expertenoptionen",
+    preserveEmbeddedImages: "Eingebettete data-Bilder behalten",
+    mergePaths: "Paths zusammenführen",
+    cleanupIds: "IDs bereinigen",
+    removeHiddenElems: "Versteckte Elemente entfernen",
     zip: "ZIP",
     separate: "Einzeldateien",
     files: "Dateien",

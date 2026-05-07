@@ -1,11 +1,29 @@
+import { optimize as optimizeWithSvgo } from "svgo/browser";
+import type { Config as SvgoConfig } from "svgo";
+
 export type OptimizationStatus = "optimized" | "requiresManualReview";
+export type OptimizationProfile = "auto" | "icon" | "logo" | "multicolor" | "expert";
 export type SizeMode = "none" | "inline1em" | "fixed";
 export type SizeUnit = "px" | "em" | "rem" | "percent";
 export type ColorMode = "currentColor" | "custom" | "preserve";
 export type FillColorMode = ColorMode | "none";
 export type StrokeWidthMode = "set" | "preserve";
+export type OutputNameSource = "file" | "code";
+
+export interface ExpertPluginSettings {
+  cleanupIds: boolean;
+  mergePaths: boolean;
+  removeHiddenElems: boolean;
+  removeRasterImages: boolean;
+  removeTitle: boolean;
+  removeDesc: boolean;
+  removeDimensions: boolean;
+  sortAttrs: boolean;
+  sortDefsChildren: boolean;
+}
 
 export interface OptimizationSettings {
+  profile: OptimizationProfile;
   sizeMode: SizeMode;
   fixedWidth: string;
   fixedHeight: string;
@@ -26,13 +44,17 @@ export interface OptimizationSettings {
   removeIDs: boolean;
   unwrapEmptyGroups: boolean;
   requireNoInternalReferences: boolean;
+  codeOutputName: string;
   outputPrefix: string;
   outputSuffix: string;
-  logoOptimization: boolean;
+  expertPlugins: ExpertPluginSettings;
+  preserveEmbeddedImages: boolean;
+  logoOptimization?: boolean;
 }
 
 export interface OptimizationResult {
   status: OptimizationStatus;
+  profile: OptimizationProfile;
   fullSvg: string;
   compactSvg: string;
   warnings: string[];
@@ -58,17 +80,40 @@ const allowedElementNames = new Set([
   "lineargradient",
   "radialgradient",
   "stop",
+  "pattern",
+  "marker",
   "mask",
   "filter",
+  "fegaussianblur",
+  "feblend",
+  "fecolormatrix",
+  "fecomponenttransfer",
+  "fecomposite",
+  "feconvolvematrix",
+  "fediffuselighting",
+  "fedisplacementmap",
+  "fedropshadow",
+  "feflood",
+  "fefunca",
+  "fefuncb",
+  "fefuncg",
+  "fefuncr",
+  "feimage",
+  "femerge",
+  "femergenode",
+  "femorphology",
+  "feoffset",
+  "fepointlight",
+  "fespecularlighting",
+  "fespotlight",
+  "fetile",
+  "feturbulence",
+  "image",
   "a"
 ]);
 const dangerousElementNames = new Set([
   "script",
-  "metadata",
   "foreignobject",
-  "style",
-  "image",
-  "feimage",
   "iframe",
   "audio",
   "video",
@@ -91,8 +136,23 @@ const styleConvertible = new Set([
 ]);
 const linkNames = new Set(["href", "xlink:href"]);
 const externalSchemes = ["http:", "https:", "data:", "file:", "javascript:", "mailto:", "//"];
+const editorNamespacePrefixes = ["inkscape", "sodipodi", "rdf", "dc", "cc"];
+const rasterImageNames = new Set(["image", "feimage"]);
+
+export const defaultExpertPlugins: ExpertPluginSettings = {
+  cleanupIds: true,
+  mergePaths: false,
+  removeHiddenElems: true,
+  removeRasterImages: true,
+  removeTitle: false,
+  removeDesc: false,
+  removeDimensions: false,
+  sortAttrs: true,
+  sortDefsChildren: true
+};
 
 export const defaultSettings: OptimizationSettings = {
+  profile: "auto",
   sizeMode: "none",
   fixedWidth: "24",
   fixedHeight: "24",
@@ -113,38 +173,44 @@ export const defaultSettings: OptimizationSettings = {
   removeIDs: true,
   unwrapEmptyGroups: true,
   requireNoInternalReferences: true,
+  codeOutputName: "pifagor-svg.svg",
   outputPrefix: "",
   outputSuffix: "-opt",
-  logoOptimization: false
+  expertPlugins: defaultExpertPlugins,
+  preserveEmbeddedImages: false
 };
 
 export const logoSettings: OptimizationSettings = {
   ...defaultSettings,
+  profile: "logo",
   strokeWidthMode: "preserve",
   removeBackground: false,
   strokeColorMode: "preserve",
   fillColorMode: "preserve",
-  movePaintToRoot: false,
-  logoOptimization: true
+  movePaintToRoot: false
 };
 
-export function effectiveSettings(settings: OptimizationSettings): OptimizationSettings {
-  if (!settings.logoOptimization) {
-    return settings;
+export function effectiveSettings(settings: OptimizationSettings, profile: OptimizationProfile = settings.profile): OptimizationSettings {
+  const normalized = normalizeRuntimeSettings(settings);
+  if (profile !== "logo" && profile !== "multicolor") {
+    return normalized;
   }
 
   return {
-    ...settings,
+    ...normalized,
+    profile,
     strokeWidthMode: "preserve",
     removeBackground: false,
     strokeColorMode: "preserve",
     fillColorMode: "preserve",
-    movePaintToRoot: false
+    movePaintToRoot: false,
+    removeUnusedDefs: false,
+    removeIDs: false,
+    requireNoInternalReferences: false
   };
 }
 
 export function optimizeSvg(svg: string, rawSettings: OptimizationSettings = defaultSettings): OptimizationResult {
-  const settings = effectiveSettings(rawSettings);
   const document = new DOMParser().parseFromString(svg, "image/svg+xml");
   const parserError = document.querySelector("parsererror");
   if (parserError) {
@@ -156,69 +222,91 @@ export function optimizeSvg(svg: string, rawSettings: OptimizationSettings = def
     throw new Error("Missing root <svg> element.");
   }
 
+  const profile = resolveProfile(root, rawSettings);
+  const settings = effectiveSettings(rawSettings, profile);
   const warnings: string[] = [];
-  const viewBox = parseViewBox(root.getAttribute("viewBox"));
 
   if (settings.convertInlineStyles) {
-    convertInlineStyles(root, warnings);
+    convertInlineStyles(root, profile === "icon" ? warnings : []);
   }
-  sanitizeDangerousContent(root, warnings);
-  if (settings.expandUseReferences) {
+  sanitizeDangerousContent(root, warnings, settings);
+  if (settings.expandUseReferences && shouldUseIconRules(profile)) {
     expandUseReferences(root, warnings);
   }
-  if (settings.removeSafeClipPaths && viewBox) {
-    removeSafeClipPathReferences(root, viewBox);
+  const initialViewBox = parseViewBox(root.getAttribute("viewBox"));
+  if (settings.removeSafeClipPaths && initialViewBox) {
+    removeSafeClipPathReferences(root, initialViewBox);
   }
   removeWhitespaceNodes(root);
   if (settings.unwrapEmptyGroups) {
     unwrapEmptyGroups(root);
   }
-  if (settings.requireNoInternalReferences) {
-    warnings.push(...remainingInternalReferenceWarnings(root));
+
+  const optimizedRoot = parseOptimizedSvg(runSvgo(serialize(root), settings, profile));
+  const viewBox = parseViewBox(optimizedRoot.getAttribute("viewBox"));
+
+  sanitizeDangerousContent(optimizedRoot, warnings, settings);
+  if (settings.removeSafeClipPaths && viewBox) {
+    removeSafeClipPathReferences(optimizedRoot, viewBox);
+  }
+  removeWhitespaceNodes(optimizedRoot);
+  if (settings.unwrapEmptyGroups) {
+    unwrapEmptyGroups(optimizedRoot);
+  }
+  if (settings.requireNoInternalReferences && shouldUseIconRules(profile)) {
+    warnings.push(...remainingInternalReferenceWarnings(optimizedRoot));
   }
 
   if (warnings.length > 0) {
-    const fullSvg = serialize(root);
+    const fullSvg = serialize(optimizedRoot);
     return {
       status: "requiresManualReview",
+      profile,
       fullSvg,
       compactSvg: compact(fullSvg),
       warnings: unique(warnings)
     };
   }
 
-  applyPaintRules(root, settings, viewBox);
-  applySizeRules(root, settings);
-  const internalReferencesRemain = hasInternalReferences(root);
-  if (settings.removeUnusedDefs && !internalReferencesRemain) {
-    descendants(root, "defs").forEach((element) => element.remove());
+  if (shouldApplyPaintRules(profile)) {
+    applyPaintRules(optimizedRoot, settings, viewBox);
   }
-  if (settings.removeIDs && !internalReferencesRemain) {
-    removeAllIDs(root);
+  applySizeRules(optimizedRoot, settings);
+  const internalReferencesRemain = hasInternalReferences(optimizedRoot);
+  if (settings.removeUnusedDefs && !internalReferencesRemain && shouldUseIconRules(profile)) {
+    descendants(optimizedRoot, "defs").forEach((element) => element.remove());
   }
-  removeWhitespaceNodes(root);
+  if (settings.removeIDs && !internalReferencesRemain && shouldUseIconRules(profile)) {
+    removeAllIDs(optimizedRoot);
+  }
+  removeWhitespaceNodes(optimizedRoot);
   if (settings.unwrapEmptyGroups) {
-    unwrapEmptyGroups(root);
+    unwrapEmptyGroups(optimizedRoot);
   }
-  ensureAttribute(root, "aria-hidden", "true");
-  ensureAttribute(root, "focusable", "false");
+  ensureAttribute(optimizedRoot, "aria-hidden", "true");
+  ensureAttribute(optimizedRoot, "focusable", "false");
 
-  const fullSvg = serialize(root);
+  const fullSvg = serialize(optimizedRoot);
   return {
     status: "optimized",
+    profile,
     fullSvg,
     compactSvg: compact(fullSvg),
     warnings: []
   };
 }
 
-export function outputFileName(fileName: string, settings: OptimizationSettings): string {
-  const cleanPrefix = settings.outputPrefix.trim();
-  const cleanSuffix = settings.outputSuffix.trim() || "-opt";
+export function outputFileName(fileName: string, settings: OptimizationSettings, source: OutputNameSource = "file"): string {
+  const normalized = normalizeRuntimeSettings(settings);
+  if (source === "code") {
+    return ensureSvgExtension(sanitizeFileName(normalized.codeOutputName) || defaultSettings.codeOutputName);
+  }
+
+  const cleanPrefix = sanitizeFileNamePart(normalized.outputPrefix);
+  const cleanSuffix = sanitizeFileNamePart(normalized.outputSuffix) || "-opt";
   const dotIndex = fileName.lastIndexOf(".");
   const baseName = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
-  const extension = dotIndex > 0 ? fileName.slice(dotIndex + 1) : "svg";
-  return `${cleanPrefix}${baseName}${cleanSuffix}.${extension || "svg"}`;
+  return `${cleanPrefix}${sanitizeFileNamePart(baseName)}${cleanSuffix}.svg`;
 }
 
 export function toInlineHtmlSvg(svg: string): string {
@@ -237,8 +325,153 @@ export function sanitizeSvgForPreview(svg: string): string {
     throw new Error("Missing root <svg> element.");
   }
 
-  sanitizeDangerousContent(root, []);
+  sanitizeDangerousContent(root, [], defaultSettings);
   return serialize(root);
+}
+
+function normalizeRuntimeSettings(settings: OptimizationSettings): OptimizationSettings {
+  const profile = settings.logoOptimization ? "logo" : isOptimizationProfile(settings.profile) ? settings.profile : defaultSettings.profile;
+  const settingsWithoutLegacyLogo = { ...settings };
+  delete settingsWithoutLegacyLogo.logoOptimization;
+  return {
+    ...defaultSettings,
+    ...settingsWithoutLegacyLogo,
+    profile,
+    codeOutputName: settings.codeOutputName || defaultSettings.codeOutputName,
+    outputSuffix: settings.outputSuffix ?? defaultSettings.outputSuffix,
+    expertPlugins: {
+      ...defaultExpertPlugins,
+      ...settings.expertPlugins
+    },
+    preserveEmbeddedImages: Boolean(settings.preserveEmbeddedImages)
+  };
+}
+
+function isOptimizationProfile(value: unknown): value is OptimizationProfile {
+  return value === "auto" || value === "icon" || value === "logo" || value === "multicolor" || value === "expert";
+}
+
+function resolveProfile(root: Element, rawSettings: OptimizationSettings): OptimizationProfile {
+  const requested = rawSettings.logoOptimization ? "logo" : rawSettings.profile ?? "auto";
+  if (requested !== "auto") {
+    return isOptimizationProfile(requested) ? requested : "icon";
+  }
+  return isComplexSvg(root) ? "multicolor" : "icon";
+}
+
+function isComplexSvg(root: Element): boolean {
+  const referenceElements = new Set(["lineargradient", "radialgradient", "filter", "mask", "pattern", "marker", "image", "feimage"]);
+  if (allElements(root).some((element) => referenceElements.has(normalizedName(element)))) {
+    return true;
+  }
+
+  const paintValues = new Set<string>();
+  for (const element of allElements(root)) {
+    for (const name of ["fill", "stroke", "stop-color"]) {
+      const value = element.getAttribute(name);
+      if (!value || paintIsNone(value) || value === "currentColor" || containsInternalURL(value)) {
+        continue;
+      }
+      paintValues.add(value.trim().toLowerCase());
+    }
+    const style = element.getAttribute("style");
+    if (style && /url\(\s*#|gradient|filter|mask/i.test(style)) {
+      return true;
+    }
+  }
+  return paintValues.size > 1;
+}
+
+function runSvgo(svg: string, settings: OptimizationSettings, profile: OptimizationProfile): string {
+  try {
+    return optimizeWithSvgo(svg, svgoConfig(settings, profile)).data;
+  } catch {
+    return svg;
+  }
+}
+
+function svgoConfig(settings: OptimizationSettings, profile: OptimizationProfile): SvgoConfig {
+  const expert = settings.expertPlugins;
+  const isExpert = profile === "expert";
+  const conservative = profile === "logo" || profile === "multicolor";
+  const cleanupIds = isExpert ? expert.cleanupIds : !conservative;
+  const removeHiddenElems = isExpert ? expert.removeHiddenElems : profile === "icon";
+  const removeTitle = isExpert ? expert.removeTitle : false;
+  const removeDesc = isExpert ? expert.removeDesc : false;
+  const plugins = [
+    "removeDoctype",
+    "removeXMLProcInst",
+    "removeComments",
+    "removeMetadata",
+    "removeEditorsNSData",
+    "removeScripts",
+    {
+      name: "preset-default",
+      params: {
+        overrides: {
+          cleanupIds: cleanupIds ? undefined : false,
+          convertColors: conservative ? false : undefined,
+          mergePaths: isExpert ? expert.mergePaths : profile === "icon",
+          removeHiddenElems,
+          removeDesc,
+          removeUselessDefs: profile === "icon" ? undefined : false,
+          removeUnknownsAndDefaults: false,
+          cleanupNumericValues: {
+            floatPrecision: conservative ? 4 : 3
+          },
+          convertPathData: {
+            floatPrecision: conservative ? 4 : 3
+          }
+        }
+      }
+    }
+  ] as unknown as NonNullable<SvgoConfig["plugins"]>;
+
+  if (removeTitle) {
+    plugins.push("removeTitle");
+  }
+  if (isExpert && expert.removeDimensions) {
+    plugins.push("removeDimensions");
+  }
+  if (isExpert && expert.sortAttrs) {
+    plugins.push("sortAttrs");
+  }
+  if (isExpert && expert.sortDefsChildren) {
+    plugins.push("sortDefsChildren");
+  }
+  if (!settings.preserveEmbeddedImages || (isExpert && expert.removeRasterImages)) {
+    plugins.push("removeRasterImages");
+  }
+
+  return {
+    multipass: profile === "icon" || profile === "expert",
+    floatPrecision: conservative ? 4 : 3,
+    plugins,
+    js2svg: {
+      pretty: false
+    }
+  };
+}
+
+function parseOptimizedSvg(svg: string): Element {
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const parserError = document.querySelector("parsererror");
+  if (parserError) {
+    throw new Error(`Invalid SVG/XML after optimization: ${parserError.textContent?.trim() ?? "parser error"}`);
+  }
+  const root = document.documentElement;
+  if (!root || normalizedName(root) !== "svg") {
+    throw new Error("Missing root <svg> element after optimization.");
+  }
+  return root;
+}
+
+function shouldUseIconRules(profile: OptimizationProfile): boolean {
+  return profile === "icon" || profile === "expert";
+}
+
+function shouldApplyPaintRules(profile: OptimizationProfile): boolean {
+  return profile === "icon" || profile === "expert";
 }
 
 function convertInlineStyles(element: Element, warnings: string[]): void {
@@ -267,7 +500,7 @@ function convertInlineStyles(element: Element, warnings: string[]): void {
   elementChildren(element).forEach((child) => convertInlineStyles(child, warnings));
 }
 
-function sanitizeDangerousContent(element: Element, warnings: string[]): void {
+function sanitizeDangerousContent(element: Element, warnings: string[], settings: OptimizationSettings): void {
   for (const child of Array.from(element.childNodes)) {
     if (child.nodeType === Node.COMMENT_NODE) {
       child.remove();
@@ -278,9 +511,20 @@ function sanitizeDangerousContent(element: Element, warnings: string[]): void {
     }
 
     const name = normalizedName(child);
+    if (name === "metadata" || normalizedTagName(child).includes(":")) {
+      child.remove();
+      continue;
+    }
     if (dangerousElementNames.has(name)) {
       child.remove();
       continue;
+    }
+    if (rasterImageNames.has(name)) {
+      sanitizeDangerousAttributes(child, settings);
+      if (!shouldKeepEmbeddedImage(child, settings)) {
+        child.remove();
+        continue;
+      }
     }
     if (!allowedElementNames.has(name)) {
       warnings.push(`Element <${child.tagName}> requires manual review and was removed from the safe output.`);
@@ -292,14 +536,14 @@ function sanitizeDangerousContent(element: Element, warnings: string[]): void {
       continue;
     }
 
-    sanitizeDangerousAttributes(child);
-    sanitizeDangerousContent(child, warnings);
+    sanitizeDangerousAttributes(child, settings);
+    sanitizeDangerousContent(child, warnings, settings);
   }
 
-  sanitizeDangerousAttributes(element);
+  sanitizeDangerousAttributes(element, settings);
 }
 
-function sanitizeDangerousAttributes(element: Element): void {
+function sanitizeDangerousAttributes(element: Element, settings: OptimizationSettings): void {
   for (const attribute of Array.from(element.attributes)) {
     const name = attribute.name;
     const value = attribute.value;
@@ -307,8 +551,18 @@ function sanitizeDangerousAttributes(element: Element): void {
     const normalizedValue = value.trim();
     const lowerValue = normalizedValue.toLowerCase();
 
+    if (lowerName === "xmlns" || lowerName === "xmlns:xlink") {
+      continue;
+    }
+    if (lowerName.startsWith("xmlns:") || editorNamespacePrefixes.some((prefix) => lowerName.startsWith(`${prefix}:`))) {
+      element.removeAttribute(name);
+      continue;
+    }
     if (lowerName.startsWith("on")) {
       element.removeAttribute(name);
+      continue;
+    }
+    if (isAllowedEmbeddedImageReference(element, lowerName, normalizedValue, settings)) {
       continue;
     }
     if (hasExternalURL(normalizedValue)) {
@@ -319,6 +573,24 @@ function sanitizeDangerousAttributes(element: Element): void {
       element.removeAttribute(name);
     }
   }
+}
+
+function shouldKeepEmbeddedImage(element: Element, settings: OptimizationSettings): boolean {
+  if (!(settings.profile === "expert" && settings.preserveEmbeddedImages)) {
+    return false;
+  }
+  const href = element.getAttribute("href") ?? element.getAttribute("xlink:href") ?? "";
+  return href.trim().toLowerCase().startsWith("data:image/");
+}
+
+function isAllowedEmbeddedImageReference(element: Element, lowerName: string, value: string, settings: OptimizationSettings): boolean {
+  return (
+    rasterImageNames.has(normalizedName(element)) &&
+    linkNames.has(lowerName) &&
+    settings.profile === "expert" &&
+    settings.preserveEmbeddedImages &&
+    value.trim().toLowerCase().startsWith("data:image/")
+  );
 }
 
 function expandUseReferences(root: Element, warnings: string[]): void {
@@ -694,6 +966,29 @@ function hasExternalURL(value: string): boolean {
   return false;
 }
 
+function sanitizeFileName(value: string): string {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function sanitizeFileNamePart(value: string): string {
+  return value
+    .trim()
+    .replace(/\.svg$/i, "")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function ensureSvgExtension(value: string): string {
+  const clean = sanitizeFileName(value) || "pifagor-svg";
+  return clean.toLowerCase().endsWith(".svg") ? clean : `${clean}.svg`;
+}
+
 function allElements(root: Element): Element[] {
   return [root, ...Array.from(root.getElementsByTagName("*"))];
 }
@@ -708,6 +1003,10 @@ function elementChildren(element: Element): Element[] {
 
 function normalizedName(element: Element): string {
   return element.localName.toLowerCase();
+}
+
+function normalizedTagName(element: Element): string {
+  return element.tagName.toLowerCase();
 }
 
 function paintIsNone(value: string | null): boolean {

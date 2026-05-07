@@ -17,6 +17,7 @@ import {
   Zap
 } from "lucide-react";
 import { copy } from "./i18n";
+import { SvgCodeEditor } from "./components/SvgCodeEditor";
 import {
   defaultSettings,
   optimizeSvg,
@@ -25,6 +26,8 @@ import {
   toInlineHtmlSvg,
   type ColorMode,
   type FillColorMode,
+  type ExpertPluginSettings,
+  type OptimizationProfile,
   type OptimizationSettings,
   type SizeMode
 } from "./lib/optimizer";
@@ -58,7 +61,7 @@ function createPastedResult(svg: string, settings: OptimizationSettings): Proces
     const result = optimizeSvg(svg, settings);
     return {
       name,
-      outputName: outputFileName(name, settings),
+      outputName: outputFileName(name, settings, "code"),
       original: svg,
       originalSizeBytes: byteSize(svg),
       originalPreviewSvg: previewOriginalSvg(svg),
@@ -69,7 +72,7 @@ function createPastedResult(svg: string, settings: OptimizationSettings): Proces
   } catch (error) {
     return {
       name,
-      outputName: outputFileName(name, settings),
+      outputName: outputFileName(name, settings, "code"),
       original: svg,
       originalSizeBytes: byteSize(svg),
       originalPreviewSvg: previewOriginalSvg(svg),
@@ -193,6 +196,13 @@ export default function App() {
   const toastTimeoutRef = useRef<number | null>(null);
   const t = copy[locale];
   const languageOptions: SelectOption<Locale>[] = locales.map((item) => ({ value: item, label: item.toUpperCase() }));
+  const profileOptions: SelectOption<OptimizationProfile>[] = [
+    { value: "auto", label: t.profileAuto },
+    { value: "icon", label: t.profileIcon },
+    { value: "logo", label: t.profileLogo },
+    { value: "multicolor", label: t.profileMulticolor },
+    { value: "expert", label: t.profileExpert }
+  ];
   const sizeModeOptions: SelectOption<SizeMode>[] = [
     { value: "none", label: t.noSize },
     { value: "inline1em", label: t.inline },
@@ -258,6 +268,7 @@ export default function App() {
   const selectedSvg = displaySvg(selected);
   const previewSvg = previewSafeSvg(selectedSvg, settings);
   const htmlSvg = selectedSvg ? toInlineHtmlSvg(selectedSvg) : "";
+  const paintControlsLocked = draftSettings.profile === "logo" || draftSettings.profile === "multicolor";
   const selectedResultSize = formatByteSize(resultByteSize(selected));
   const selectedSourceSize = formatByteSize(inputMode === "files" ? selectedFile?.originalSizeBytes : byteSize(pastedSvg));
   const sourcePreviewSvg = useMemo(() => {
@@ -280,6 +291,16 @@ export default function App() {
 
   const patchDraftSettings = (patch: Partial<OptimizationSettings>) => {
     setDraftSettings((current) => ({ ...current, ...patch }));
+  };
+
+  const patchExpertPlugins = (patch: Partial<ExpertPluginSettings>) => {
+    setDraftSettings((current) => ({
+      ...current,
+      expertPlugins: {
+        ...current.expertPlugins,
+        ...patch
+      }
+    }));
   };
 
   const patchDraftPreviewSettings = (patch: Partial<PreviewSettings>) => {
@@ -475,7 +496,7 @@ export default function App() {
       </div>
 
       <div className="code-card">
-        <textarea className="code-editor" aria-label={t.optimizedCode} value={selectedSvg} spellCheck={false} onChange={(event) => updateResultSvg(event.target.value)} />
+        <SvgCodeEditor ariaLabel={t.optimizedCode} value={selectedSvg} onChange={updateResultSvg} />
       </div>
 
       {currentWarnings.length > 0 && (
@@ -614,13 +635,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <textarea
-                id="original-svg"
-                aria-label={t.originalCode}
-                value={selectedFile?.original ?? ""}
-                spellCheck={false}
-                onChange={(event) => updateSelectedSource(event.target.value)}
-              />
+              <SvgCodeEditor id="original-svg" ariaLabel={t.originalCode} value={selectedFile?.original ?? ""} onChange={updateSelectedSource} />
             </section>
 
             {renderPreviewPanel()}
@@ -646,7 +661,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <textarea id="pasted-svg" aria-label={t.sourceCode} value={pastedSvg} spellCheck={false} onChange={(event) => setPastedSvg(event.target.value)} />
+              <SvgCodeEditor id="pasted-svg" ariaLabel={t.sourceCode} value={pastedSvg} onChange={setPastedSvg} />
             </section>
 
             {renderPreviewPanel()}
@@ -688,17 +703,24 @@ export default function App() {
           </button>
         </div>
 
-        <label className="switch-row">
-          <input
-            type="checkbox"
-            checked={draftSettings.logoOptimization}
-            onChange={(event) => patchDraftSettings({ logoOptimization: event.target.checked })}
-          />
-          <span>
-            <strong>{t.logoMode}</strong>
-            <small>{t.logoHint}</small>
-          </span>
-        </label>
+        <Field label={t.profile}>
+          <div className="profile-grid">
+            {profileOptions.map((option) => (
+              <button
+                key={option.value}
+                className={draftSettings.profile === option.value ? "is-selected" : ""}
+                type="button"
+                onClick={() => patchDraftSettings({ profile: option.value })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {(draftSettings.profile === "logo" || draftSettings.profile === "multicolor") && (
+          <p className="settings-note">{draftSettings.profile === "logo" ? t.logoHint : t.logoHint}</p>
+        )}
 
         <Field label={t.size}>
           <CustomSelect label={t.size} value={draftSettings.sizeMode} options={sizeModeOptions} onChange={(sizeMode) => patchDraftSettings({ sizeMode })} />
@@ -717,10 +739,10 @@ export default function App() {
             value={draftSettings.strokeColorMode}
             options={strokeColorOptions}
             onChange={(strokeColorMode) => patchDraftSettings({ strokeColorMode })}
-            disabled={draftSettings.logoOptimization}
+            disabled={paintControlsLocked}
           />
         </Field>
-        {draftSettings.strokeColorMode === "custom" && !draftSettings.logoOptimization && (
+        {draftSettings.strokeColorMode === "custom" && !paintControlsLocked && (
           <ColorControl label={t.strokeColor} value={draftSettings.strokeColor} onChange={(strokeColor) => patchDraftSettings({ strokeColor })} />
         )}
 
@@ -730,10 +752,10 @@ export default function App() {
             value={draftSettings.fillColorMode}
             options={fillColorOptions}
             onChange={(fillColorMode) => patchDraftSettings({ fillColorMode })}
-            disabled={draftSettings.logoOptimization}
+            disabled={paintControlsLocked}
           />
         </Field>
-        {draftSettings.fillColorMode === "custom" && !draftSettings.logoOptimization && (
+        {draftSettings.fillColorMode === "custom" && !paintControlsLocked && (
           <ColorControl label={t.fillColor} value={draftSettings.fillColor} onChange={(fillColor) => patchDraftSettings({ fillColor })} />
         )}
 
@@ -755,14 +777,53 @@ export default function App() {
 
         <div className="toggle-stack">
           <label>
-            <input type="checkbox" checked={draftSettings.movePaintToRoot} disabled={draftSettings.logoOptimization} onChange={(event) => patchDraftSettings({ movePaintToRoot: event.target.checked })} />
+            <input type="checkbox" checked={draftSettings.movePaintToRoot} disabled={paintControlsLocked} onChange={(event) => patchDraftSettings({ movePaintToRoot: event.target.checked })} />
             {t.movePaint}
           </label>
           <label>
-            <input type="checkbox" checked={draftSettings.removeBackground} disabled={draftSettings.logoOptimization} onChange={(event) => patchDraftSettings({ removeBackground: event.target.checked })} />
+            <input type="checkbox" checked={draftSettings.removeBackground} disabled={paintControlsLocked} onChange={(event) => patchDraftSettings({ removeBackground: event.target.checked })} />
             {t.removeBg}
           </label>
         </div>
+
+        {draftSettings.profile === "expert" && (
+          <section className="settings-section">
+            <h3>{t.expertSettings}</h3>
+            <div className="toggle-stack">
+              <label>
+                <input type="checkbox" checked={draftSettings.preserveEmbeddedImages} onChange={(event) => patchDraftSettings({ preserveEmbeddedImages: event.target.checked })} />
+                {t.preserveEmbeddedImages}
+              </label>
+              <label>
+                <input type="checkbox" checked={draftSettings.expertPlugins.mergePaths} onChange={(event) => patchExpertPlugins({ mergePaths: event.target.checked })} />
+                {t.mergePaths}
+              </label>
+              <label>
+                <input type="checkbox" checked={draftSettings.expertPlugins.cleanupIds} onChange={(event) => patchExpertPlugins({ cleanupIds: event.target.checked })} />
+                {t.cleanupIds}
+              </label>
+              <label>
+                <input type="checkbox" checked={draftSettings.expertPlugins.removeHiddenElems} onChange={(event) => patchExpertPlugins({ removeHiddenElems: event.target.checked })} />
+                {t.removeHiddenElems}
+              </label>
+            </div>
+          </section>
+        )}
+
+        <section className="settings-section">
+          <h3>{t.fileNames}</h3>
+          <Field label={t.codeOutputName}>
+            <input value={draftSettings.codeOutputName} onChange={(event) => patchDraftSettings({ codeOutputName: event.target.value })} />
+          </Field>
+          <div className="file-name-grid">
+            <Field label={t.outputPrefix}>
+              <input value={draftSettings.outputPrefix} onChange={(event) => patchDraftSettings({ outputPrefix: event.target.value })} />
+            </Field>
+            <Field label={t.outputSuffix}>
+              <input value={draftSettings.outputSuffix} onChange={(event) => patchDraftSettings({ outputSuffix: event.target.value })} />
+            </Field>
+          </div>
+        </section>
 
         <Field label={t.output}>
           <CustomSelect label={t.output} value={outputMode} options={outputModeOptions} onChange={setOutputMode} />

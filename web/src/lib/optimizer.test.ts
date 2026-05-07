@@ -22,7 +22,7 @@ describe("optimizeSvg", () => {
       </svg>
     `;
 
-    const result = optimizeSvg(input, defaultSettings);
+    const result = optimizeSvg(input, { ...defaultSettings, profile: "icon" });
 
     expect(result.status).toBe("optimized");
     expect(result.fullSvg).toContain('stroke="currentColor"');
@@ -44,7 +44,7 @@ describe("optimizeSvg", () => {
       </svg>
     `;
 
-    const result = optimizeSvg(input, defaultSettings);
+    const result = optimizeSvg(input, { ...defaultSettings, profile: "icon" });
 
     expect(result.status).toBe("optimized");
     expect(result.fullSvg).not.toContain("<script");
@@ -80,10 +80,58 @@ describe("optimizeSvg", () => {
       </svg>
     `;
 
-    const result = optimizeSvg(input, defaultSettings);
+    const result = optimizeSvg(input, { ...defaultSettings, profile: "icon" });
 
     expect(result.status).toBe("requiresManualReview");
-    expect(result.warnings.some((warning) => warning.includes('fill="url(#paint0)"'))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes('fill="url(#'))).toBe(true);
+  });
+
+  it("keeps complex multicolor SVG references in auto mode instead of requiring manual review", () => {
+    const input = `<?xml version="1.0" encoding="UTF-8"?>
+      <!-- Created with Inkscape -->
+      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="350.66" height="248" viewBox="0 0 1052.3622 744.09448" inkscape:version="0.47">
+        <title>little red racing car</title>
+        <metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></metadata>
+        <defs>
+          <linearGradient id="paintA"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#660000"/></linearGradient>
+          <radialGradient id="paintB" xlink:href="#paintA" cx="22.682" cy="-15.034" r="3.243"/>
+          <filter id="shadow"><feGaussianBlur stdDeviation="0.57264819"/></filter>
+        </defs>
+        <g inkscape:label="Layer 1">
+          <path d="M10 10h80v40H10z" style="fill:url(#paintA);filter:url(#shadow)"/>
+          <path d="M15 15h20v20H15z" fill="#ff8080"/>
+        </g>
+      </svg>`;
+
+    const result = optimizeSvg(input, defaultSettings);
+
+    expect(result.status).toBe("optimized");
+    expect(result.profile).toBe("multicolor");
+    expect(result.fullSvg).toContain("linearGradient");
+    expect(result.fullSvg).toContain("radialGradient");
+    expect(result.fullSvg).toContain("filter");
+    expect(result.fullSvg).toContain("url(#");
+    expect(result.fullSvg).not.toContain("metadata");
+    expect(result.fullSvg).not.toContain("inkscape:");
+    expect(result.fullSvg).not.toContain("Created with Inkscape");
+  });
+
+  it("preserves embedded raster images only when expert mode explicitly allows them", () => {
+    const input = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <image href="data:image/png;base64,AAAA" width="24" height="24"/>
+      <image href="https://example.com/icon.png" width="24" height="24"/>
+    </svg>`;
+
+    const defaultResult = optimizeSvg(input, defaultSettings);
+    const expertResult = optimizeSvg(input, {
+      ...defaultSettings,
+      profile: "expert",
+      preserveEmbeddedImages: true
+    });
+
+    expect(defaultResult.fullSvg).not.toContain("<image");
+    expect(expertResult.fullSvg).toContain('href="data:image/png;base64,AAAA"');
+    expect(expertResult.fullSvg).not.toContain("https://example.com/icon.png");
   });
 
   it("writes compact inline SVG without xmlns and derives output filenames", () => {
@@ -96,6 +144,13 @@ describe("optimizeSvg", () => {
     expect(result.compactSvg).not.toContain("xmlns=");
     expect(result.compactSvg).not.toContain("\n");
     expect(outputFileName("icon.svg", defaultSettings)).toBe("icon-opt.svg");
+    expect(outputFileName("pasted.svg", defaultSettings, "code")).toBe("pifagor-svg.svg");
+    expect(
+      outputFileName("icon.svg", { ...defaultSettings, outputPrefix: "web-", outputSuffix: "-clean" })
+    ).toBe("web-icon-clean.svg");
+    expect(
+      outputFileName("pasted.svg", { ...defaultSettings, codeOutputName: "custom-inline" }, "code")
+    ).toBe("custom-inline.svg");
   });
 
   it("creates inline HTML SVG without xmlns while preserving viewBox", () => {

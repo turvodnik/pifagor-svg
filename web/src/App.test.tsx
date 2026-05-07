@@ -56,6 +56,22 @@ describe("App", () => {
     );
   });
 
+  it("keeps fixed size controls stable when the unit dropdown opens", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(styles).toMatch(/\.inline-grid\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)\s+minmax\(86px,\s*0\.72fr\);/s);
+    expect(styles).toMatch(/\.inline-grid\s+\.custom-select-menu\s*{[^}]*position:\s*absolute;/s);
+  });
+
+  it("uses SVG code editor surfaces for source and result code", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Optimize SVG code/i }));
+
+    expect(document.querySelectorAll(".svg-code-editor")).toHaveLength(2);
+    expect(screen.getByText(/File names/i)).toBeInTheDocument();
+  });
+
   it("applies reset defaults to the active preset immediately", () => {
     saveSettings({
       locale: "en",
@@ -183,7 +199,10 @@ describe("App", () => {
 
   it("downloads the manually edited selected SVG", async () => {
     const capturedBlobs: Blob[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const downloadNames: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloadNames.push(this.download);
+    });
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: vi.fn((blob: Blob) => {
@@ -207,6 +226,7 @@ describe("App", () => {
 
     await waitFor(() => expect(capturedBlobs).toHaveLength(1));
     await expect(readBlobText(capturedBlobs[0])).resolves.toBe(editedSvg);
+    expect(downloadNames).toEqual(["pifagor-svg.svg"]);
   });
 
   it("re-optimizes edited source file SVG in the current session", async () => {

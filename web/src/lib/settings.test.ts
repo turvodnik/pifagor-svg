@@ -9,11 +9,32 @@ describe("settings", () => {
   });
 
   it("stores the single editable preset in localStorage", () => {
-    const next = { ...defaultSettings, logoOptimization: true, strokeWidth: "2" };
+    const next = { ...defaultSettings, profile: "logo" as const, strokeWidth: "2" };
     const preview = { ...defaultPreviewSettings, backgroundMode: "light" as const };
 
     saveSettings({ locale: "de", settings: next, preview });
 
     expect(loadSavedSettings()).toEqual({ locale: "de", settings: next, preview });
+  });
+
+  it("migrates older saved logo and output settings", () => {
+    localStorage.setItem(
+      "pifagor-svg:web-settings:v1",
+      JSON.stringify({
+        locale: "ru",
+        settings: {
+          ...defaultSettings,
+          logoOptimization: true,
+          outputSuffix: "-clean"
+        },
+        preview: defaultPreviewSettings
+      })
+    );
+
+    expect(loadSavedSettings()?.settings).toMatchObject({
+      profile: "logo",
+      outputSuffix: "-clean",
+      codeOutputName: "pifagor-svg.svg"
+    });
   });
 });
