@@ -1,0 +1,38 @@
+{
+  "name": "pifagor-svg-optimize-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/generate-locales.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-xml": "^6.1.0",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.42.1",
+    "@lezer/highlight": "^1.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "fflate": "^0.8.2",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svgo": "^4.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "jsdom": "^25.0.1",
+    "vitest": "^4.1.5"
+  }
+}
