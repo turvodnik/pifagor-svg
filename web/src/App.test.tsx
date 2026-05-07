@@ -64,4 +64,15 @@ describe("App", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(/Optimize SVG first/i);
   });
+
+  it("uses app-rendered dropdown menus instead of native select popups", () => {
+    render(<App />);
+
+    expect(document.querySelector("select")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Settings$/i }));
+
+    expect(document.querySelector("select")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /currentColor|ZIP|No width/i }).length).toBeGreaterThan(0);
+  });
 });

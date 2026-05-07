@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowDownToLine,
+  ChevronDown,
   Code2,
   Copy,
   Files,
@@ -36,6 +37,10 @@ const sampleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 </svg>`;
 
 type InputMode = "code" | "files";
+type SelectOption<T extends string> = {
+  value: T;
+  label: string;
+};
 
 function createPastedResult(svg: string, settings: OptimizationSettings): ProcessedFile {
   const name = "pasted.svg";
@@ -102,6 +107,38 @@ export default function App() {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const t = copy[locale];
+  const languageOptions: SelectOption<Locale>[] = locales.map((item) => ({ value: item, label: item.toUpperCase() }));
+  const sizeModeOptions: SelectOption<SizeMode>[] = [
+    { value: "none", label: t.noSize },
+    { value: "inline1em", label: t.inline },
+    { value: "fixed", label: t.fixed }
+  ];
+  const sizeUnitOptions: SelectOption<OptimizationSettings["sizeUnit"]>[] = [
+    { value: "px", label: "px" },
+    { value: "em", label: "em" },
+    { value: "rem", label: "rem" },
+    { value: "percent", label: "%" }
+  ];
+  const strokeColorOptions: SelectOption<ColorMode>[] = [
+    { value: "currentColor", label: t.currentColor },
+    { value: "custom", label: t.custom },
+    { value: "preserve", label: t.preserve }
+  ];
+  const fillColorOptions: SelectOption<FillColorMode>[] = [
+    { value: "currentColor", label: t.currentColor },
+    { value: "custom", label: t.custom },
+    { value: "preserve", label: t.preserve },
+    { value: "none", label: t.none }
+  ];
+  const previewBackgroundOptions: SelectOption<PreviewBackgroundMode>[] = [
+    { value: "dark", label: t.previewDark },
+    { value: "light", label: t.previewLight },
+    { value: "custom", label: t.custom }
+  ];
+  const outputModeOptions: SelectOption<BatchOutputMode>[] = [
+    { value: "zip", label: t.zip },
+    { value: "separate", label: t.separate }
+  ];
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
@@ -342,16 +379,10 @@ export default function App() {
             {t.settingsShort}
             {isCustomPreset && <span className="preset-indicator" aria-hidden="true" />}
           </button>
-          <label className="language-select">
+          <div className="language-select">
             <Globe2 size={16} />
-            <select value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
-              {locales.map((item) => (
-                <option key={item} value={item}>
-                  {item.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </label>
+            <CustomSelect label="Language" value={locale} options={languageOptions} onChange={setLocale} compact />
+          </div>
         </div>
       </header>
 
@@ -520,57 +551,49 @@ export default function App() {
         </label>
 
         <Field label={t.size}>
-          <select value={draftSettings.sizeMode} onChange={(event) => patchDraftSettings({ sizeMode: event.target.value as SizeMode })}>
-            <option value="none">{t.noSize}</option>
-            <option value="inline1em">{t.inline}</option>
-            <option value="fixed">{t.fixed}</option>
-          </select>
+          <CustomSelect label={t.size} value={draftSettings.sizeMode} options={sizeModeOptions} onChange={(sizeMode) => patchDraftSettings({ sizeMode })} />
         </Field>
         {draftSettings.sizeMode === "fixed" && (
           <div className="inline-grid">
             <input value={draftSettings.fixedWidth} onChange={(event) => patchDraftSettings({ fixedWidth: event.target.value })} aria-label="Width" />
             <input value={draftSettings.lockSize ? draftSettings.fixedWidth : draftSettings.fixedHeight} disabled={draftSettings.lockSize} onChange={(event) => patchDraftSettings({ fixedHeight: event.target.value })} aria-label="Height" />
-            <select value={draftSettings.sizeUnit} onChange={(event) => patchDraftSettings({ sizeUnit: event.target.value as OptimizationSettings["sizeUnit"] })}>
-              <option value="px">px</option>
-              <option value="em">em</option>
-              <option value="rem">rem</option>
-              <option value="percent">%</option>
-            </select>
+            <CustomSelect label="Size unit" value={draftSettings.sizeUnit} options={sizeUnitOptions} onChange={(sizeUnit) => patchDraftSettings({ sizeUnit })} />
           </div>
         )}
 
         <Field label={t.stroke}>
-          <select value={draftSettings.strokeColorMode} onChange={(event) => patchDraftSettings({ strokeColorMode: event.target.value as ColorMode })} disabled={draftSettings.logoOptimization}>
-            <option value="currentColor">{t.currentColor}</option>
-            <option value="custom">{t.custom}</option>
-            <option value="preserve">{t.preserve}</option>
-          </select>
+          <CustomSelect
+            label={t.stroke}
+            value={draftSettings.strokeColorMode}
+            options={strokeColorOptions}
+            onChange={(strokeColorMode) => patchDraftSettings({ strokeColorMode })}
+            disabled={draftSettings.logoOptimization}
+          />
         </Field>
         {draftSettings.strokeColorMode === "custom" && !draftSettings.logoOptimization && (
           <ColorControl label={t.strokeColor} value={draftSettings.strokeColor} onChange={(strokeColor) => patchDraftSettings({ strokeColor })} />
         )}
 
         <Field label={t.fill}>
-          <select value={draftSettings.fillColorMode} onChange={(event) => patchDraftSettings({ fillColorMode: event.target.value as FillColorMode })} disabled={draftSettings.logoOptimization}>
-            <option value="currentColor">{t.currentColor}</option>
-            <option value="custom">{t.custom}</option>
-            <option value="preserve">{t.preserve}</option>
-            <option value="none">{t.none}</option>
-          </select>
+          <CustomSelect
+            label={t.fill}
+            value={draftSettings.fillColorMode}
+            options={fillColorOptions}
+            onChange={(fillColorMode) => patchDraftSettings({ fillColorMode })}
+            disabled={draftSettings.logoOptimization}
+          />
         </Field>
         {draftSettings.fillColorMode === "custom" && !draftSettings.logoOptimization && (
           <ColorControl label={t.fillColor} value={draftSettings.fillColor} onChange={(fillColor) => patchDraftSettings({ fillColor })} />
         )}
 
         <Field label={t.previewBackground}>
-          <select
+          <CustomSelect
+            label={t.previewBackground}
             value={draftPreviewSettings.backgroundMode}
-            onChange={(event) => patchDraftPreviewSettings({ backgroundMode: event.target.value as PreviewBackgroundMode })}
-          >
-            <option value="dark">{t.previewDark}</option>
-            <option value="light">{t.previewLight}</option>
-            <option value="custom">{t.custom}</option>
-          </select>
+            options={previewBackgroundOptions}
+            onChange={(backgroundMode) => patchDraftPreviewSettings({ backgroundMode })}
+          />
         </Field>
         {draftPreviewSettings.backgroundMode === "custom" && (
           <ColorControl
@@ -592,10 +615,7 @@ export default function App() {
         </div>
 
         <Field label={t.output}>
-          <select value={outputMode} onChange={(event) => setOutputMode(event.target.value as BatchOutputMode)}>
-            <option value="zip">{t.zip}</option>
-            <option value="separate">{t.separate}</option>
-          </select>
+          <CustomSelect label={t.output} value={outputMode} options={outputModeOptions} onChange={setOutputMode} />
         </Field>
 
         <div className="settings-actions">
@@ -627,9 +647,97 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="field">
+    <div className="field">
       <span>{label}</span>
       {children}
-    </label>
+    </div>
+  );
+}
+
+function CustomSelect<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  compact = false
+}: {
+  label: string;
+  value: T;
+  options: SelectOption<T>[];
+  onChange: (value: T) => void;
+  disabled?: boolean;
+  compact?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function closeFromOutside(event: PointerEvent) {
+      if (!selectRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function closeWithEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", closeFromOutside);
+    window.addEventListener("keydown", closeWithEscape);
+
+    return () => {
+      window.removeEventListener("pointerdown", closeFromOutside);
+      window.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+    }
+  }, [disabled]);
+
+  return (
+    <div className={`custom-select ${compact ? "is-compact" : ""} ${isOpen ? "is-open" : ""}`} ref={selectRef}>
+      <button
+        className="custom-select-trigger"
+        type="button"
+        aria-label={`${label}: ${selected?.label ?? ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        disabled={disabled}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span>{selected?.label}</span>
+        <ChevronDown size={14} />
+      </button>
+      {isOpen && (
+        <div className="custom-select-menu" role="listbox" aria-label={label}>
+          {options.map((option) => (
+            <button
+              className={option.value === value ? "is-selected" : ""}
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
